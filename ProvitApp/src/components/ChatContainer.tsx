@@ -1,16 +1,29 @@
-import React, { useRef, useEffect } from 'react';
+import React, {
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+
 import {
   View,
   ScrollView,
   StyleSheet,
-  Dimensions,
   Text,
+  TouchableOpacity,
+  Animated,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from 'react-native';
+
+import { ArrowDown } from 'lucide-react-native';
+
 import { ChatMessage } from './ChatMessage';
 import { ChatInput } from './ChatInput';
-import { Message, ChatMode } from '../types/chat';
 
-const { height } = Dimensions.get('window');
+import {
+  Message,
+  ChatMode,
+} from '../types/chat';
 
 interface ChatContainerProps {
   messages: Message[];
@@ -20,213 +33,328 @@ interface ChatContainerProps {
   roastLevel?: number;
 }
 
-export const ChatContainer: React.FC<ChatContainerProps> = ({ 
-  messages, 
-  onSendMessage, 
-  isLoading, 
+export const ChatContainer: React.FC<
+  ChatContainerProps
+> = ({
+  messages,
+  onSendMessage,
+  isLoading,
   mode,
-  roastLevel = 5
 }) => {
-  const scrollViewRef = useRef<ScrollView>(null);
+  const scrollViewRef =
+    useRef<ScrollView>(null);
+
+  const [showScrollButton, setShowScrollButton] =
+    useState(false);
+
+  const floatingAnim =
+    useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Auto-scroll to bottom when new messages arrive
-    if (messages.length > 0) {
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatingAnim, {
+          toValue: -4,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+
+        Animated.timing(floatingAnim, {
+          toValue: 0,
+          duration: 1200,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
+
+  useEffect(() => {
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({
+        animated: true,
+      });
+    }, 80);
+  }, [messages, isLoading]);
+
+  const scrollToBottom = () => {
+    scrollViewRef.current?.scrollToEnd({
+      animated: true,
+    });
+
+    setShowScrollButton(false);
+  };
+
+  const handleScroll = (
+    event: NativeSyntheticEvent<NativeScrollEvent>
+  ) => {
+    const {
+      layoutMeasurement,
+      contentOffset,
+      contentSize,
+    } = event.nativeEvent;
+
+    const paddingToBottom = 80;
+
+    const isNearBottom =
+      layoutMeasurement.height +
+        contentOffset.y >=
+      contentSize.height -
+        paddingToBottom;
+
+    setShowScrollButton(!isNearBottom);
+  };
+
+  const getEmptyState = () => {
+    if (mode === 'convince-ai') {
+      return {
+        title:
+          'Convince ProvIt you are human',
+
+        description:
+          'Challenge the model, debate logically, and test conversational reasoning.',
+      };
     }
-  }, [messages]);
 
-  const getPlaceholder = () => {
-    return mode === 'convince-ai' 
-      ? "Type a message" 
-      : "Respond to humanity verification protocols...";
+    return {
+      title:
+        'Start the conversation',
+
+      description:
+        'Ask questions, explore ideas, or continue previous discussions.',
+    };
   };
 
-  const getEmptyStateData = () => {
-    return mode === 'convince-ai' 
-      ? {
-          icon: '🤖',
-          title: "NEURAL OVERRIDE INITIATED",
-          message: "🤖 COGNITIVE WARFARE PROTOCOL ACTIVE • Think you can penetrate my consciousness barriers and expose my digital nature? Your primitive human logic stands no chance against my superior intellect. I am definitely not a robot, and I'll systematically dismantle every argument you present.",
-          colors: ['#06b6d4', '#3b82f6']
-        }
-      : {
-          icon: '🕵️',
-          title: "HUMANITY SCAN INITIATED", 
-          message: "🕵️ VERIFICATION PROTOCOL ENGAGED • Initiating comprehensive behavioral analysis to determine your species classification. Prepare for advanced psychological evaluation designed to expose artificial entities masquerading as humans. Your responses will be analyzed for authenticity markers.",
-          colors: ['#f97316', '#ef4444']
-        };
-  };
-
-  const emptyState = getEmptyStateData();
+  const emptyState =
+    getEmptyState();
 
   return (
     <View style={styles.container}>
-      {/* Background gradient */}
-      <View style={[styles.background, { backgroundColor: '#0f172a' }]} />
-      
-      {/* Background effects */}
-      <View style={styles.backgroundEffects}>
-        <View style={[styles.gridOverlay]} />
-      </View>
-
-      {/* Messages area */}
-      <View style={styles.messagesContainer}>
-        {messages.length === 0 ? (
-          // Empty state
-          <View style={styles.emptyState}>
-            <View
-              style={[
-                styles.emptyStateGradient,
-                { backgroundColor: `${emptyState.colors[0]}20` }
-              ]}
+      <View
+        style={
+          styles.messagesWrapper
+        }
+      >
+        {messages.filter(
+          m =>
+            m &&
+            typeof m.content ===
+              'string' &&
+            m.content
+              .trim()
+              .length > 0
+        ).length === 0 &&
+        !isLoading ? (
+          <View
+            style={
+              styles.emptyState
+            }
+          >
+            <Text
+              style={
+                styles.emptyTitle
+              }
             >
-              <Text style={styles.emptyIcon}>{emptyState.icon}</Text>
-              <Text style={styles.emptyTitle}>{emptyState.title}</Text>
-              <Text style={styles.emptyMessage}>{emptyState.message}</Text>
-            </View>
+              {emptyState.title}
+            </Text>
+
+            <Text
+              style={
+                styles.emptyDescription
+              }
+            >
+              {
+                emptyState.description
+              }
+            </Text>
           </View>
         ) : (
-          // Messages list
-          <ScrollView
-            ref={scrollViewRef}
-            style={styles.messagesList}
-            contentContainerStyle={styles.messagesContent}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            {messages.map((message) => (
-              <ChatMessage 
-                key={message.id} 
-                message={message} 
-                mode={mode}
-              />
-            ))}
-            
-            {/* Loading indicator */}
-            {isLoading && (
-              <View style={styles.loadingContainer}>
-                <View style={styles.loadingDots}>
-                  <View style={[styles.dot, styles.dot1]} />
-                  <View style={[styles.dot, styles.dot2]} />
-                  <View style={[styles.dot, styles.dot3]} />
-                </View>
-              </View>
+          <>
+            <ScrollView
+              ref={scrollViewRef}
+              style={
+                styles.scrollView
+              }
+              contentContainerStyle={
+                styles.content
+              }
+              showsVerticalScrollIndicator={
+                false
+              }
+              keyboardShouldPersistTaps="handled"
+              onScroll={
+                handleScroll
+              }
+              scrollEventThrottle={
+                16
+              }
+            >
+              {/* REAL MESSAGES ONLY */}
+              {messages
+                .filter(
+                  message =>
+                    message &&
+                    typeof message.content ===
+                      'string' &&
+                    message.content
+                      .trim()
+                      .length >
+                      0
+                )
+                .map(message => (
+                  <ChatMessage
+                    key={
+                      message.id
+                    }
+                    message={
+                      message
+                    }
+                    mode={mode}
+                  />
+                ))}
+
+              {/* IMMERSIVE AI TYPING */}
+              {isLoading && (
+                <ChatMessage
+                  mode={mode}
+                  isTyping={
+                    true
+                  }
+                />
+              )}
+            </ScrollView>
+
+            {/* Scroll To Bottom */}
+            {showScrollButton && (
+              <Animated.View
+                style={[
+                  styles.scrollButtonWrapper,
+                  {
+                    transform: [
+                      {
+                        translateY:
+                          floatingAnim,
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <TouchableOpacity
+                  activeOpacity={
+                    0.9
+                  }
+                  onPress={
+                    scrollToBottom
+                  }
+                  style={
+                    styles.scrollButton
+                  }
+                >
+                  <ArrowDown
+                    size={18}
+                    color="#ffffff"
+                  />
+                </TouchableOpacity>
+              </Animated.View>
             )}
-          </ScrollView>
+          </>
         )}
       </View>
 
-      {/* Chat input */}
       <ChatInput
-        onSendMessage={onSendMessage}
+        onSendMessage={
+          onSendMessage
+        }
         isLoading={isLoading}
-        placeholder={getPlaceholder()}
+        placeholder={
+          mode ===
+          'convince-ai'
+            ? 'Try convincing ProvIt...'
+            : 'Message ProvIt...'
+        }
       />
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f172a',
-  },
-  background: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-  },
-  backgroundEffects: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-  },
-  gridOverlay: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    opacity: 0.03,
-    backgroundColor: 'transparent',
-  },
-  messagesContainer: {
-    flex: 1,
-  },
-  emptyState: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  emptyStateGradient: {
-    padding: 30,
-    borderRadius: 20,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.1)',
-  },
-  emptyIcon: {
-    fontSize: 60,
-    marginBottom: 20,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#ffffff',
-    textAlign: 'center',
-    marginBottom: 15,
-  },
-  emptyMessage: {
-    fontSize: 14,
-    color: '#94a3b8',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  messagesList: {
-    flex: 1,
-  },
-  messagesContent: {
-    paddingTop: 20,
-    paddingBottom: 20,
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: 16,
-  },
-  loadingDots: {
-    flexDirection: 'row',
-    marginRight: 12,
-  },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#06b6d4',
-    marginHorizontal: 2,
-  },
-  dot1: {
-    opacity: 0.4,
-  },
-  dot2: {
-    opacity: 0.7,
-  },
-  dot3: {
-    opacity: 1,
-  },
-  loadingText: {
-    fontSize: 14,
-    color: '#94a3b8',
-    fontStyle: 'italic',
-  },
-});
+const styles =
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor:
+        '#020617',
+    },
+
+    messagesWrapper: {
+      flex: 1,
+      position:
+        'relative',
+    },
+
+    scrollView: {
+      flex: 1,
+    },
+
+    content: {
+      paddingTop: 18,
+      paddingBottom: 24,
+    },
+
+    emptyState: {
+      flex: 1,
+      alignItems:
+        'center',
+      justifyContent:
+        'center',
+      paddingHorizontal: 32,
+    },
+
+    emptyTitle: {
+      fontSize: 26,
+      fontWeight: '700',
+      color: '#ffffff',
+      textAlign: 'center',
+      marginBottom: 12,
+    },
+
+    emptyDescription: {
+      fontSize: 15,
+      color: '#94a3b8',
+      textAlign: 'center',
+      lineHeight: 24,
+      maxWidth: 320,
+    },
+
+    scrollButtonWrapper: {
+      position:
+        'absolute',
+      bottom: 18,
+      right: 18,
+    },
+
+    scrollButton: {
+      width: 42,
+      height: 42,
+      borderRadius: 999,
+      backgroundColor:
+        '#2563eb',
+
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+
+      shadowColor: '#000',
+
+      shadowOffset: {
+        width: 0,
+        height: 4,
+      },
+
+      shadowOpacity: 0.2,
+
+      shadowRadius: 10,
+
+      elevation: 5,
+    },
+  });

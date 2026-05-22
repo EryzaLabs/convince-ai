@@ -1,8 +1,41 @@
 {
-  "name": "ProvitApp",
-  "displayName": "ProvIt",
-  "react-native-google-mobile-ads": {
-    "android_app_id": "ca-app-pub-5804219391910467~2410710726",
-    "ios_app_id": "ca-app-pub-xxxxxxxx~xxxxxxxx"
+  "expo": {
+    "name": "ProvIt",
+    "slug": "provit-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./src/assets/logo.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0f172a"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.provit.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0f172a"
+      },
+      "package": "com.provit.app"
+    },
+    "web": {
+      "favicon": "./src/assets/logo.png"
+    },
+    "plugins": [
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-5804219391910467~2410710726",
+          "iosAppId": "ca-app-pub-xxxxxxxx~xxxxxxxx"
+        }
+      ],
+      "expo-font",
+      "expo-sharing",
+      "expo-status-bar"
+    ],
+    "scheme": "provit"
   }
 }

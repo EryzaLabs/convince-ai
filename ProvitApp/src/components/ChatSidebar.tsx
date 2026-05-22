@@ -1,443 +1,722 @@
-import React, { useState } from 'react';
+import React from 'react';
+
 import {
   View,
   Text,
+  StyleSheet,
   TouchableOpacity,
   ScrollView,
-  StyleSheet,
-  Modal,
-  TextInput,
-  Alert,
+  Animated,
+  PanResponder,
+  Dimensions,
 } from 'react-native';
-import { ChatSession, ChatMode } from '../types/chat';
+
+import {
+  Plus,
+  MessageSquare,
+  Brain,
+  UserCheck,
+  Trash2,
+  X,
+} from 'lucide-react-native';
+
+import {
+  Chat,
+  ChatMode,
+} from '../types/chat';
+
+const SCREEN_WIDTH =
+  Dimensions.get('window').width;
+
+const SIDEBAR_WIDTH = 290;
 
 interface ChatSidebarProps {
-  chatHistory: ChatSession[];
-  currentChat: ChatSession | null;
-  onNewChat: (mode: ChatMode) => void;
-  onSelectChat: (chat: ChatSession) => void;
-  onDeleteChat: (chatId: string) => void;
+  chatHistory: Chat[];
+
+  currentChat: Chat | null;
+
+  onNewChat: (
+    mode: ChatMode
+  ) => void;
+
+  onSelectChat: (
+    chat: Chat
+  ) => void;
+
+  onDeleteChat: (
+    chatId: string
+  ) => void;
+
   isVisible: boolean;
+
   onClose: () => void;
 }
 
-export const ChatSidebar: React.FC<ChatSidebarProps> = ({
+export const ChatSidebar: React.FC<
+  ChatSidebarProps
+> = ({
   chatHistory,
   currentChat,
   onNewChat,
   onSelectChat,
   onDeleteChat,
   isVisible,
-  onClose
+  onClose,
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterMode, setFilterMode] = useState<ChatMode | 'all'>('all');
+  const translateX = React.useRef(
+    new Animated.Value(
+      -SIDEBAR_WIDTH
+    )
+  ).current;
 
-  // Filter and search chats
-  const filteredChats = chatHistory
-    .filter(chat => {
-      if (filterMode !== 'all' && chat.mode !== filterMode) return false;
-      if (!searchTerm.trim()) return true;
-      
-      const term = searchTerm.toLowerCase();
-      return chat.name.toLowerCase().includes(term) ||
-             chat.messages.some(msg => msg.content.toLowerCase().includes(term));
-    })
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  React.useEffect(() => {
+    Animated.spring(
+      translateX,
+      {
+        toValue: isVisible
+          ? 0
+          : -SIDEBAR_WIDTH,
 
-  const handleNewChat = (mode: ChatMode) => {
-    onNewChat(mode);
-    onClose();
-  };
+        damping: 18,
+        stiffness: 180,
 
-  const handleSelectChat = (chat: ChatSession) => {
-    onSelectChat(chat);
-    onClose();
-  };
+        useNativeDriver: true,
+      }
+    ).start();
+  }, [isVisible]);
 
-  const handleDeleteChat = (chatId: string) => {
-    Alert.alert(
-      'Delete Chat',
-      'Are you sure you want to delete this chat?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive',
-          onPress: () => onDeleteChat(chatId)
-        }
-      ]
+  const panResponder =
+    React.useMemo(
+      () =>
+        PanResponder.create({
+          onMoveShouldSetPanResponder:
+            (_, gesture) => {
+              const isHorizontal =
+                Math.abs(
+                  gesture.dx
+                ) >
+                Math.abs(
+                  gesture.dy
+                );
+
+              return (
+                isHorizontal &&
+                Math.abs(
+                  gesture.dx
+                ) > 8
+              );
+            },
+
+          onPanResponderMove:
+            (_, gesture) => {
+              // OPENING
+              if (!isVisible) {
+                if (
+                  gesture.dx > 0
+                ) {
+                  const value =
+                    -SIDEBAR_WIDTH +
+                    gesture.dx;
+
+                  translateX.setValue(
+                    Math.min(
+                      value,
+                      0
+                    )
+                  );
+                }
+              }
+
+              // CLOSING
+              else {
+                if (
+                  gesture.dx < 0
+                ) {
+                  translateX.setValue(
+                    gesture.dx
+                  );
+                }
+              }
+            },
+
+          onPanResponderRelease:
+            (_, gesture) => {
+              // OPEN
+              if (!isVisible) {
+                if (
+                  gesture.dx >
+                  70
+                ) {
+                  Animated.spring(
+                    translateX,
+                    {
+                      toValue: 0,
+
+                      damping: 18,
+                      stiffness: 180,
+
+                      useNativeDriver: true,
+                    }
+                  ).start();
+                } else {
+                  Animated.spring(
+                    translateX,
+                    {
+                      toValue:
+                        -SIDEBAR_WIDTH,
+
+                      damping: 18,
+                      stiffness: 180,
+
+                      useNativeDriver: true,
+                    }
+                  ).start();
+                }
+              }
+
+              // CLOSE
+              else {
+                if (
+                  gesture.dx <
+                  -70
+                ) {
+                  Animated.spring(
+                    translateX,
+                    {
+                      toValue:
+                        -SIDEBAR_WIDTH,
+
+                      damping: 18,
+                      stiffness: 180,
+
+                      useNativeDriver: true,
+                    }
+                  ).start(
+                    onClose
+                  );
+                } else {
+                  Animated.spring(
+                    translateX,
+                    {
+                      toValue: 0,
+
+                      damping: 18,
+                      stiffness: 180,
+
+                      useNativeDriver: true,
+                    }
+                  ).start();
+                }
+              }
+            },
+        }),
+      [isVisible]
+    );
+
+  const getPreview = (
+    chat: Chat
+  ) => {
+    if (
+      !chat.messages ||
+      chat.messages.length === 0
+    ) {
+      return chat.mode ===
+        'convince-ai'
+        ? 'New Convince AI Chat'
+        : 'New Prove Human Chat';
+    }
+
+    return (
+      chat.messages[0]
+        ?.content?.slice(
+          0,
+          42
+        ) + '...'
     );
   };
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const getModeIcon = (mode: ChatMode) => {
-    return mode === 'convince-ai' ? '🤖' : '👤';
-  };
-
-  const getRoastLevelStyle = (level: number) => {
-    if (level <= 3) return styles.roastLevelLow;
-    if (level <= 6) return styles.roastLevelMedium;
-    return styles.roastLevelHigh;
-  };
-
   return (
-    <Modal
-      visible={isVisible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <View style={styles.container}>
-        <View style={[styles.background, { backgroundColor: '#0f172a' }]} />
-        
+    <View style={StyleSheet.absoluteFill}>
+      {/* Edge Gesture */}
+      {!isVisible && (
+        <View
+          style={styles.edgeGesture}
+          {...panResponder.panHandlers}
+        />
+      )}
+
+      {/* Backdrop */}
+      {isVisible && (
+        <TouchableOpacity
+          activeOpacity={1}
+          style={styles.backdrop}
+          onPress={onClose}
+        />
+      )}
+
+      {/* Sidebar */}
+      <Animated.View
+        {...panResponder.panHandlers}
+        style={[
+          styles.sidebarWrapper,
+          {
+            transform: [
+              {
+                translateX,
+              },
+            ],
+          },
+        ]}
+      >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.headerTitle}>Chat History</Text>
-          <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Text style={styles.closeButtonText}>✕</Text>
-          </TouchableOpacity>
-        </View>
+          <View>
+            <Text style={styles.logo}>
+              ProvIt
+            </Text>
+          </View>
 
-        {/* New Chat Buttons */}
-        <View style={styles.newChatSection}>
           <TouchableOpacity
-            onPress={() => handleNewChat('convince-ai')}
-            style={styles.newChatButton}
+            onPress={onClose}
+            style={
+              styles.closeButton
+            }
           >
-            <View
-              style={[styles.newChatGradient, { backgroundColor: '#06b6d4' }]}
-            >
-              <Text style={styles.newChatIcon}>🤖</Text>
-              <Text style={styles.newChatText}>New Convince AI</Text>
-            </View>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            onPress={() => handleNewChat('prove-human')}
-            style={styles.newChatButton}
-          >
-            <View
-              style={[styles.newChatGradient, { backgroundColor: '#f97316' }]}
-            >
-              <Text style={styles.newChatIcon}>👤</Text>
-              <Text style={styles.newChatText}>New Prove Human</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-
-        {/* Search and Filter */}
-        <View style={styles.searchSection}>
-          <View style={styles.searchContainer}>
-            <Text style={styles.searchIcon}>🔍</Text>
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search chats..."
-              placeholderTextColor="#64748b"
-              value={searchTerm}
-              onChangeText={setSearchTerm}
+            <X
+              size={18}
+              color="#cbd5e1"
             />
-          </View>
-          
-          <View style={styles.filterContainer}>
+          </TouchableOpacity>
+        </View>
+
+        {/* Modes */}
+        <View style={styles.section}>
+          <Text
+            style={
+              styles.sectionTitle
+            }
+          >
+            Modes
+          </Text>
+
+          <View
+            style={styles.modeList}
+          >
             <TouchableOpacity
-              style={[
-                styles.filterButton,
-                filterMode === 'all' && styles.filterButtonActive
-              ]}
-              onPress={() => setFilterMode('all')}
+              activeOpacity={0.85}
+              style={
+                styles.modeButton
+              }
+              onPress={() => {
+                onNewChat(
+                  'convince-ai'
+                );
+
+                onClose();
+              }}
             >
-              <Text style={[
-                styles.filterButtonText,
-                filterMode === 'all' && styles.filterButtonTextActive
-              ]}>All</Text>
+              <Brain
+                size={16}
+                color="#60a5fa"
+              />
+
+              <Text
+                style={
+                  styles.modeText
+                }
+              >
+                Convince AI
+              </Text>
             </TouchableOpacity>
-            
+
             <TouchableOpacity
-              style={[
-                styles.filterButton,
-                filterMode === 'convince-ai' && styles.filterButtonActive
-              ]}
-              onPress={() => setFilterMode('convince-ai')}
+              activeOpacity={0.85}
+              style={
+                styles.modeButton
+              }
+              onPress={() => {
+                onNewChat(
+                  'prove-human'
+                );
+
+                onClose();
+              }}
             >
-              <Text style={[
-                styles.filterButtonText,
-                filterMode === 'convince-ai' && styles.filterButtonTextActive
-              ]}>🤖 AI</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity
-              style={[
-                styles.filterButton,
-                filterMode === 'prove-human' && styles.filterButtonActive
-              ]}
-              onPress={() => setFilterMode('prove-human')}
-            >
-              <Text style={[
-                styles.filterButtonText,
-                filterMode === 'prove-human' && styles.filterButtonTextActive
-              ]}>👤 Human</Text>
+              <UserCheck
+                size={16}
+                color="#60a5fa"
+              />
+
+              <Text
+                style={
+                  styles.modeText
+                }
+              >
+                Prove Human
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Chat List */}
-        <ScrollView 
-          style={styles.chatList}
-          showsVerticalScrollIndicator={false}
+        {/* Recent Chats */}
+        <View
+          style={[
+            styles.section,
+            styles.flexSection,
+          ]}
         >
-          {filteredChats.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateIcon}>💬</Text>
-              <Text style={styles.emptyStateText}>
-                {searchTerm ? 'No chats match your search' : 'No chats yet'}
-              </Text>
-            </View>
-          ) : (
-            filteredChats.map((chat) => (
-              <TouchableOpacity
-                key={chat.id}
-                style={[
-                  styles.chatItem,
-                  currentChat?.id === chat.id && styles.chatItemActive
-                ]}
-                onPress={() => handleSelectChat(chat)}
+          <Text
+            style={
+              styles.sectionTitle
+            }
+          >
+            Recents
+          </Text>
+
+          <ScrollView
+            showsVerticalScrollIndicator={
+              false
+            }
+          >
+            {chatHistory.length ===
+            0 ? (
+              <View
+                style={
+                  styles.emptyState
+                }
               >
-                <View style={styles.chatItemHeader}>
-                  <Text style={styles.chatItemIcon}>
-                    {getModeIcon(chat.mode)}
-                  </Text>
-                  <View style={styles.chatItemInfo}>
-                    <Text style={styles.chatItemName} numberOfLines={1}>
-                      {chat.name}
-                    </Text>
-                    <View style={styles.chatItemMeta}>
-                      <Text style={styles.chatItemTime}>
-                        {formatTime(chat.updatedAt)}
-                      </Text>
-                      <View style={[styles.roastLevelBadge, getRoastLevelStyle(chat.roastLevel)]}>
-                        <Text style={styles.roastLevelText}>{chat.roastLevel}🌶️</Text>
+                <Text
+                  style={
+                    styles.emptyText
+                  }
+                >
+                  No conversations
+                </Text>
+              </View>
+            ) : (
+              chatHistory.map(
+                (chat) => {
+                  const isActive =
+                    currentChat?.id ===
+                    chat.id;
+
+                  return (
+                    <TouchableOpacity
+                      key={chat.id}
+                      activeOpacity={
+                        0.8
+                      }
+                      onPress={() => {
+                        onSelectChat(
+                          chat
+                        );
+
+                        onClose();
+                      }}
+                      style={[
+                        styles.chatCard,
+
+                        isActive &&
+                          styles.activeChatCard,
+                      ]}
+                    >
+                      <View
+                        style={
+                          styles.chatLeft
+                        }
+                      >
+                        <MessageSquare
+                          size={15}
+                          color={
+                            isActive
+                              ? '#ffffff'
+                              : '#94a3b8'
+                          }
+                        />
+
+                        <Text
+                          numberOfLines={
+                            1
+                          }
+                          style={[
+                            styles.chatTitle,
+
+                            isActive &&
+                              styles.activeChatTitle,
+                          ]}
+                        >
+                          {getPreview(
+                            chat
+                          )}
+                        </Text>
                       </View>
-                    </View>
-                  </View>
-                  <TouchableOpacity
-                    onPress={() => handleDeleteChat(chat.id)}
-                    style={styles.deleteButton}
-                  >
-                    <Text style={styles.deleteButtonText}>🗑️</Text>
-                  </TouchableOpacity>
-                </View>
-                
-                {chat.messages.length > 0 && (
-                  <Text style={styles.chatItemPreview} numberOfLines={2}>
-                    {chat.messages[chat.messages.length - 1].content}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            ))
-          )}
-        </ScrollView>
-      </View>
-    </Modal>
+
+                      <TouchableOpacity
+                        hitSlop={{
+                          top: 8,
+                          bottom: 8,
+                          left: 8,
+                          right: 8,
+                        }}
+                        onPress={() =>
+                          onDeleteChat(
+                            chat.id
+                          )
+                        }
+                      >
+                        <Trash2
+                          size={14}
+                          color="#64748b"
+                        />
+                      </TouchableOpacity>
+                    </TouchableOpacity>
+                  );
+                }
+              )
+            )}
+          </ScrollView>
+        </View>
+
+        {/* Floating Button */}
+        <TouchableOpacity
+          activeOpacity={0.9}
+          style={
+            styles.floatingButton
+          }
+          onPress={() => {
+            onNewChat(
+              'convince-ai'
+            );
+
+            onClose();
+          }}
+        >
+          <Plus
+            size={16}
+            color="#ffffff"
+          />
+
+          <Text
+            style={
+              styles.floatingButtonText
+            }
+          >
+            New Chat
+          </Text>
+        </TouchableOpacity>
+      </Animated.View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#0f172a',
-  },
-  background: {
+  edgeGesture: {
     position: 'absolute',
+
     left: 0,
-    right: 0,
     top: 0,
     bottom: 0,
+
+    width: 24,
+
+    zIndex: 60,
   },
+
+  sidebarWrapper: {
+    position: 'absolute',
+
+    left: 0,
+    top: 0,
+    bottom: 0,
+
+    width: SIDEBAR_WIDTH,
+
+    backgroundColor:
+      '#000000',
+
+    borderRightWidth: 1,
+    borderRightColor:
+      '#111827',
+
+    paddingTop: 8,
+    paddingHorizontal: 14,
+    paddingBottom: 18,
+
+    zIndex: 50,
+  },
+
+  backdrop: {
+    position: 'absolute',
+
+    top: 0,
+    left: 0,
+
+    width: SCREEN_WIDTH,
+    height: '100%',
+
+    backgroundColor:
+      'rgba(0,0,0,0.45)',
+
+    zIndex: 40,
+  },
+
   header: {
+    height: 52,
+
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent:
+      'space-between',
+
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingTop: 60,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(148, 163, 184, 0.1)',
+
+    marginBottom: 18,
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+
+  logo: {
     color: '#ffffff',
+
+    fontSize: 24,
+    fontWeight: '800',
   },
+
   closeButton: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(148, 163, 184, 0.1)',
-  },
-  closeButtonText: {
-    fontSize: 16,
-    color: '#ffffff',
-  },
-  newChatSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  newChatButton: {
-    marginBottom: 12,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  newChatGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  newChatIcon: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-  newChatText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
-  },
-  searchSection: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(148, 163, 184, 0.1)',
-  },
-  searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(30, 41, 59, 0.5)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    marginBottom: 12,
-  },
-  searchIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: '#ffffff',
-  },
-  filterContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  filterButton: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: 'rgba(30, 41, 59, 0.5)',
-    alignItems: 'center',
-  },
-  filterButtonActive: {
-    backgroundColor: '#06b6d4',
-  },
-  filterButtonText: {
-    fontSize: 14,
-    color: '#94a3b8',
-    fontWeight: '500',
-  },
-  filterButtonTextActive: {
-    color: '#ffffff',
-  },
-  chatList: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 40,
-  },
-  emptyStateIcon: {
-    fontSize: 40,
-    marginBottom: 12,
-  },
-  emptyStateText: {
-    fontSize: 16,
-    color: '#64748b',
-    textAlign: 'center',
-  },
-  chatItem: {
-    backgroundColor: 'rgba(30, 41, 59, 0.3)',
-    borderRadius: 12,
-    padding: 16,
-    marginVertical: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(148, 163, 184, 0.1)',
-  },
-  chatItemActive: {
-    borderColor: '#06b6d4',
-    backgroundColor: 'rgba(6, 182, 212, 0.1)',
-  },
-  chatItemHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  chatItemIcon: {
-    fontSize: 20,
-    marginRight: 12,
-  },
-  chatItemInfo: {
-    flex: 1,
-  },
-  chatItemName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#ffffff',
-    marginBottom: 2,
-  },  chatItemTime: {
-    fontSize: 12,
-    color: '#64748b',
-  },
-  chatItemMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 4,
-  },
-  deleteButton: {
-    padding: 4,
-  },
-  deleteButtonText: {
-    fontSize: 16,
-  },
-  chatItemPreview: {
-    fontSize: 14,
-    color: '#94a3b8',
-    lineHeight: 18,
-  },  roastLevelBadge: {
-    borderRadius: 12,
-    paddingVertical: 2,
-    paddingHorizontal: 8,
+    width: 34,
+    height: 34,
+
+    borderRadius: 999,
+
+    backgroundColor:
+      '#0f172a',
+
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 8,
   },
-  roastLevelLow: {
-    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+
+  section: {
+    marginBottom: 18,
   },
-  roastLevelMedium: {
-    backgroundColor: 'rgba(249, 115, 22, 0.2)',
+
+  flexSection: {
+    flex: 1,
   },
-  roastLevelHigh: {
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+
+  sectionTitle: {
+    color: '#94a3b8',
+
+    fontSize: 11,
+    fontWeight: '600',
+
+    textTransform:
+      'uppercase',
+
+    letterSpacing: 1,
+
+    marginBottom: 10,
   },
-  roastLevelText: {
-    fontSize: 10,
-    fontWeight: 'bold',
+
+  modeList: {
+    gap: 10,
+  },
+
+  modeButton: {
+    height: 42,
+
+    borderRadius: 12,
+
+    backgroundColor:
+      '#0f172a',
+
+    flexDirection: 'row',
+    alignItems: 'center',
+
+    paddingHorizontal: 12,
+
+    gap: 10,
+  },
+
+  modeText: {
     color: '#ffffff',
+
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  emptyState: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+
+  emptyText: {
+    color: '#64748b',
+    fontSize: 13,
+  },
+
+  chatCard: {
+    height: 42,
+
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent:
+      'space-between',
+
+    paddingHorizontal: 10,
+
+    borderRadius: 10,
+
+    marginBottom: 4,
+  },
+
+  activeChatCard: {
+    backgroundColor:
+      '#1e293b',
+  },
+
+  chatLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+
+    gap: 10,
+
+    flex: 1,
+  },
+
+  chatTitle: {
+    flex: 1,
+
+    color: '#cbd5e1',
+
+    fontSize: 14,
+  },
+
+  activeChatTitle: {
+    color: '#ffffff',
+  },
+
+  floatingButton: {
+    position: 'absolute',
+
+    right: 16,
+    bottom: 28,
+
+    height: 46,
+
+    paddingHorizontal: 16,
+
+    borderRadius: 999,
+
+    backgroundColor:
+      '#2563eb',
+
+    flexDirection: 'row',
+    alignItems: 'center',
+
+    gap: 8,
+  },
+
+  floatingButtonText: {
+    color: '#ffffff',
+
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

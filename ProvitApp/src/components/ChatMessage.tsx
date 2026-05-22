@@ -1,329 +1,549 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, {
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   Image,
-  Clipboard,
-  Alert,
   Animated,
-  Dimensions,
-  Platform,
 } from 'react-native';
-import { Message, ChatMode } from '../types/chat';
 
-const { width } = Dimensions.get('window');
+import * as Clipboard from 'expo-clipboard';
+
+import {
+  Message,
+  ChatMode,
+} from '../types/chat';
 
 interface ChatMessageProps {
-  message: Message;
+  message?: Message;
+
   mode: ChatMode;
+
+  isTyping?: boolean;
 }
 
-export const ChatMessage: React.FC<ChatMessageProps> = ({ message, mode }) => {
-  const isUser = message.sender === 'user';
-  const [isCopied, setIsCopied] = useState(false);
-  
-  // Simple entrance animation
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  
+export const ChatMessage: React.FC<
+  ChatMessageProps
+> = ({
+  message,
+  mode,
+  isTyping = false,
+}) => {
+  const isUser =
+    message?.sender === 'user';
+
+  const [copied, setCopied] =
+    useState(false);
+
+  const fadeAnim =
+    useRef(
+      new Animated.Value(0)
+    ).current;
+
+  const dot1 =
+    useRef(
+      new Animated.Value(0.3)
+    ).current;
+
+  const dot2 =
+    useRef(
+      new Animated.Value(0.3)
+    ).current;
+
+  const dot3 =
+    useRef(
+      new Animated.Value(0.3)
+    ).current;
+
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
-  }, []);  // Function to copy message content to clipboard
-  const copyToClipboard = async () => {
-    try {
-      Clipboard.setString(message.content);
-      setIsCopied(true);
-      // Alert.alert('✅ Copied!', 'Message copied to clipboard');
-      setTimeout(() => setIsCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy text: ', err);
-      Alert.alert('❌ Error', 'Failed to copy message');
-    }
-  };
-  
-  // Function to render text with bold formatting for *text*
-  const renderFormattedText = (text: string) => {
-    const parts = text.split(/(\*[^*]+\*)/g);
-    
-    return parts.map((part, index) => {
-      if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
-        // Remove asterisks and make bold
-        const boldText = part.slice(1, -1);
-        return (
-          <Text key={index} style={styles.boldText}>
-            {boldText}
-          </Text>
-        );
+    Animated.timing(
+      fadeAnim,
+      {
+        toValue: 1,
+        duration: 180,
+        useNativeDriver: true,
       }
-      return <Text key={index}>{part}</Text>;
-    });
-  };  // Get the appropriate AI avatar
-  const getAiAvatar = () => {
+    ).start();
+  }, []);
+
+  useEffect(() => {
+    if (!isTyping) return;
+
+    const createAnimation = (
+      dot: Animated.Value,
+      delay: number
+    ) => {
+      return Animated.loop(
+        Animated.sequence([
+          Animated.delay(delay),
+
+          Animated.timing(dot, {
+            toValue: 1,
+            duration: 260,
+            useNativeDriver: true,
+          }),
+
+          Animated.timing(dot, {
+            toValue: 0.3,
+            duration: 260,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+    };
+
+    Animated.parallel([
+      createAnimation(
+        dot1,
+        0
+      ),
+
+      createAnimation(
+        dot2,
+        140
+      ),
+
+      createAnimation(
+        dot3,
+        280
+      ),
+    ]).start();
+  }, [isTyping]);
+
+  const copyMessage =
+    async () => {
+      if (
+        !message?.content
+      )
+        return;
+
+      await Clipboard.setStringAsync(
+        message.content
+      );
+
+      setCopied(true);
+
+      setTimeout(() => {
+        setCopied(false);
+      }, 1200);
+    };
+
+  const getAvatar = () => {
     try {
-      if (mode === 'convince-ai') {
-        // Use Roxx avatar for convince-ai mode
+      if (
+        mode ===
+        'convince-ai'
+      ) {
         return require('../assets/roxx.png');
-      } else {
-        // Use Agent Wolf avatar for prove-human mode
-        return require('../assets/agent_wolf.jpg');
       }
-    } catch (error) {
-      console.warn('Failed to load AI avatar:', error);
+
+      return require('../assets/agent_wolf.jpg');
+    } catch {
       return null;
     }
   };
 
-  const aiAvatarSource = getAiAvatar();
-  
+  const avatar =
+    getAvatar();
+
   return (
-    <Animated.View 
+    <Animated.View
       style={[
-        styles.container, 
-        isUser ? styles.userContainer : styles.aiContainer,
-        { opacity: fadeAnim }
+        styles.wrapper,
+
+        isUser
+          ? styles.userWrapper
+          : styles.aiWrapper,
+
+        {
+          opacity: fadeAnim,
+        },
       ]}
     >
-      {/* Simple avatar */}
-      <View style={[styles.avatarContainer, isUser ? styles.userAvatarContainer : styles.aiAvatarContainer]}>
-        <View style={[styles.avatar, isUser ? styles.userAvatar : styles.aiAvatar]}>
-          {isUser ? (
-            <Text style={styles.avatarText}>👤</Text>
-          ) : aiAvatarSource ? (
-            <Image 
-              source={aiAvatarSource}
-              style={styles.aiAvatarImage}
-              onError={(error) => {
-                console.warn('Failed to load AI avatar image:', error);
-                // Fallback handled by showing emoji instead
-              }}
-              resizeMode="cover"
+      {/* AI Avatar */}
+      {!isUser && (
+        <View
+          style={
+            styles.avatarWrapper
+          }
+        >
+          {avatar ? (
+            <Image
+              source={avatar}
+              style={
+                styles.avatar
+              }
             />
           ) : (
-            <Text style={styles.avatarText}>
-              {mode === 'convince-ai' ? '🤖' : '🕵️'}
-            </Text>
-          )}
-        </View>
-      </View>
-
-      {/* Message bubble */}
-      <View style={[styles.messageContainer, isUser ? styles.userMessageContainer : styles.aiMessageContainer]}>
-        <TouchableOpacity 
-          style={[
-            styles.messageBubble, 
-            isUser ? styles.userBubble : styles.aiBubble,
-            message.isTyping && styles.typingBubble
-          ]}
-          onLongPress={copyToClipboard}
-          activeOpacity={0.8}
-          delayLongPress={500}
-        >
-          <Text style={[styles.messageText, isUser ? styles.userMessageText : styles.aiMessageText]}>
-            {message.isTyping ? (
-              <View style={styles.typingIndicator}>
-                <Text style={styles.typingDot}>●</Text>
-                <Text style={styles.typingDot}> ●</Text>
-                <Text style={styles.typingDot}> ●</Text>
-              </View>
-            ) : (
-              renderFormattedText(message.content)
-            )}
-          </Text>
-          
-          {/* Copy indicator */}
-          {isCopied && (
-            <View style={styles.copyIndicator}>
-              <Text style={styles.copyIndicatorText}>✓ Copied</Text>
+            <View
+              style={
+                styles.avatarFallback
+              }
+            >
+              <Text
+                style={
+                  styles.avatarFallbackText
+                }
+              >
+                AI
+              </Text>
             </View>
           )}
-        </TouchableOpacity>
-        
-        {/* Timestamp */}
-        <View style={styles.timestampContainer}>
-          <Text style={[styles.timestamp, isUser ? styles.userTimestamp : styles.aiTimestamp]}>
-            {message.timestamp.toLocaleTimeString([], { 
-              hour: '2-digit', 
-              minute: '2-digit'
-            })}
-          </Text>
-          {!isUser && (
-            <Text style={styles.aiMode}>
-              {mode === 'convince-ai' ? '🤖 Roxx' : '🕵️ Agent Wolf'}
-            </Text>
-          )}
         </View>
+      )}
+
+      {/* Message Content */}
+      <View
+        style={[
+          styles.contentWrapper,
+
+          isUser
+            ? styles.userContent
+            : styles.aiContent,
+        ]}
+      >
+        <TouchableOpacity
+          activeOpacity={0.92}
+          delayLongPress={
+            350
+          }
+          onLongPress={
+            copyMessage
+          }
+          disabled={
+            isTyping
+          }
+          style={[
+            styles.bubble,
+
+            isUser
+              ? styles.userBubble
+              : styles.aiBubble,
+          ]}
+        >
+          {isTyping ? (
+            <View
+              style={
+                styles.typingContainer
+              }
+            >
+              <Animated.View
+                style={[
+                  styles.typingDot,
+
+                  {
+                    opacity:
+                      dot1,
+
+                    transform: [
+                      {
+                        scale:
+                          dot1,
+                      },
+                    ],
+                  },
+                ]}
+              />
+
+              <Animated.View
+                style={[
+                  styles.typingDot,
+
+                  {
+                    opacity:
+                      dot2,
+
+                    transform: [
+                      {
+                        scale:
+                          dot2,
+                      },
+                    ],
+                  },
+                ]}
+              />
+
+              <Animated.View
+                style={[
+                  styles.typingDot,
+
+                  {
+                    opacity:
+                      dot3,
+
+                    transform: [
+                      {
+                        scale:
+                          dot3,
+                      },
+                    ],
+                  },
+                ]}
+              />
+            </View>
+          ) : (
+            <>
+              <Text
+                style={[
+                  styles.messageText,
+
+                  isUser
+                    ? styles.userText
+                    : styles.aiText,
+                ]}
+              >
+                {
+                  message?.content
+                }
+              </Text>
+
+              {copied && (
+                <View
+                  style={
+                    styles.copyBadge
+                  }
+                >
+                  <Text
+                    style={
+                      styles.copyBadgeText
+                    }
+                  >
+                    Copied
+                  </Text>
+                </View>
+              )}
+            </>
+          )}
+        </TouchableOpacity>
+
+        {!isTyping &&
+          message && (
+            <View
+              style={[
+                styles.footer,
+
+                isUser
+                  ? styles.userFooter
+                  : styles.aiFooter,
+              ]}
+            >
+              <Text
+                style={
+                  styles.timestamp
+                }
+              >
+                {message.timestamp.toLocaleTimeString(
+                  [],
+                  {
+                    hour:
+                      '2-digit',
+
+                    minute:
+                      '2-digit',
+                  }
+                )}
+              </Text>
+            </View>
+          )}
       </View>
     </Animated.View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    marginBottom: 16,
-    alignItems: 'flex-end',
-    gap: 8,
-  },
-  userContainer: {
-    flexDirection: 'row-reverse',
-  },
-  aiContainer: {
-    flexDirection: 'row',
-  },
-  
-  // Simple avatar styles
-  avatarContainer: {
-    flexShrink: 0,
-  },
-  userAvatarContainer: {
-    marginLeft: 8,
-  },
-  aiAvatarContainer: {
-    marginRight: 8,
-  },
-  
-  avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-    overflow: 'hidden',
-  },
-  userAvatar: {
-    backgroundColor: '#06b6d4', // Cyan
-  },
-  aiAvatar: {
-    backgroundColor: '#f97316', // Orange for AI
-  },
-  
-  avatarText: {
-    fontSize: 16,
-    color: '#ffffff',
-  },
-  
-  aiAvatarImage: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-  },
-  
-  // Message bubble styles
-  messageContainer: {
-    flex: 1,
-    maxWidth: '80%',
-  },
-  userMessageContainer: {
-    alignItems: 'flex-end',
-  },
-  aiMessageContainer: {
-    alignItems: 'flex-start',
-  },
-  
-  messageBubble: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 18,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-    position: 'relative',
-  },
-  userBubble: {
-    backgroundColor: '#06b6d4',
-    borderBottomRightRadius: 6,
-  },
-  aiBubble: {
-    backgroundColor: '#1e293b', // Dark slate
-    borderBottomLeftRadius: 6,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  
-  typingBubble: {
-    opacity: 0.8,
-  },
-  
-  messageText: {
-    fontSize: 16,
-    lineHeight: 22,
-    color: '#ffffff',
-  },
-  userMessageText: {
-    color: '#ffffff',
-  },
-  aiMessageText: {
-    color: '#ffffff',
-  },
-  
-  boldText: {
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  
-  typingIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  
-  typingDot: {
-    fontSize: 16,
-    color: '#ffffff',
-    opacity: 0.6,
-  },
-  
-  copyIndicator: {
-    position: 'absolute',
-    top: -25,
-    right: 0,
-    backgroundColor: 'rgba(34, 197, 94, 0.9)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    zIndex: 10,
-  },
-  
-  copyIndicatorText: {
-    color: '#ffffff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  
-  timestampContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-    gap: 8,
-  },
-  
-  timestamp: {
-    fontSize: 12,
-    color: '#94a3b8',
-    opacity: 0.7,
-  },
-  userTimestamp: {
-    textAlign: 'right',
-  },
-  aiTimestamp: {
-    textAlign: 'left',
-  },
-  
-  aiMode: {
-    fontSize: 10,
-    color: '#64748b',
-    fontWeight: '500',
-  },
-});
+const styles =
+  StyleSheet.create({
+    wrapper: {
+      flexDirection:
+        'row',
+
+      paddingHorizontal: 14,
+
+      marginBottom: 18,
+    },
+
+    userWrapper: {
+      justifyContent:
+        'flex-end',
+    },
+
+    aiWrapper: {
+      justifyContent:
+        'flex-start',
+    },
+
+    avatarWrapper: {
+      marginRight: 10,
+
+      alignSelf:
+        'flex-end',
+    },
+
+    avatar: {
+      width: 30,
+      height: 30,
+      borderRadius: 999,
+    },
+
+    avatarFallback: {
+      width: 30,
+      height: 30,
+
+      borderRadius: 999,
+
+      backgroundColor:
+        '#1e293b',
+
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+    },
+
+    avatarFallbackText: {
+      color: '#ffffff',
+
+      fontSize: 11,
+
+      fontWeight: '600',
+    },
+
+    contentWrapper: {
+      maxWidth: '82%',
+    },
+
+    userContent: {
+      alignItems:
+        'flex-end',
+    },
+
+    aiContent: {
+      alignItems:
+        'flex-start',
+    },
+
+    bubble: {
+      borderRadius: 22,
+
+      paddingHorizontal: 16,
+
+      paddingVertical: 12,
+
+      position: 'relative',
+
+      minHeight: 48,
+
+      justifyContent:
+        'center',
+    },
+
+    userBubble: {
+      backgroundColor:
+        '#2563eb',
+
+      borderBottomRightRadius: 8,
+    },
+
+    aiBubble: {
+      backgroundColor:
+        '#0f172a',
+
+      borderBottomLeftRadius: 8,
+
+      borderWidth: 1,
+
+      borderColor:
+        '#1e293b',
+    },
+
+    messageText: {
+      fontSize: 15.5,
+
+      lineHeight: 24,
+    },
+
+    userText: {
+      color: '#ffffff',
+    },
+
+    aiText: {
+      color: '#e2e8f0',
+    },
+
+    typingContainer: {
+      flexDirection:
+        'row',
+
+      alignItems:
+        'center',
+
+      gap: 6,
+
+      paddingVertical: 2,
+    },
+
+    typingDot: {
+      width: 8,
+      height: 8,
+
+      borderRadius: 999,
+
+      backgroundColor:
+        '#94a3b8',
+    },
+
+    footer: {
+      marginTop: 6,
+    },
+
+    userFooter: {
+      alignItems:
+        'flex-end',
+    },
+
+    aiFooter: {
+      alignItems:
+        'flex-start',
+    },
+
+    timestamp: {
+      fontSize: 11,
+
+      color: '#64748b',
+    },
+
+    copyBadge: {
+      position: 'absolute',
+
+      top: -28,
+      right: 0,
+
+      backgroundColor:
+        '#111827',
+
+      borderRadius: 999,
+
+      paddingHorizontal: 10,
+
+      paddingVertical: 5,
+
+      borderWidth: 1,
+
+      borderColor:
+        '#1f2937',
+    },
+
+    copyBadgeText: {
+      color: '#ffffff',
+
+      fontSize: 11,
+
+      fontWeight: '600',
+    },
+  });

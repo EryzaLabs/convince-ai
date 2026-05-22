@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { FallingPattern } from '@/components/ui/falling-pattern';
+import { GooeyText } from '@/components/ui/gooey-text-morphing';
 import { 
   Brain, 
   Shield, 
@@ -44,34 +46,12 @@ export const Homepage: React.FC<HomepageProps> = ({ onStartChat }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 relative overflow-hidden">
-      {/* Enhanced Background Effects */}
-      <div className="absolute inset-0">
-        {/* Grid Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="grid-pattern"></div>
-        </div>
-        
-        {/* Animated Orbs */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-cyan-500/5 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-radial from-blue-500/5 to-transparent rounded-full animate-pulse delay-2000"></div>
-        
-        {/* Floating Particles */}
-        <div className="absolute inset-0">
-          {[...Array(20)].map((_, i) => (
-            <div
-              key={i}
-              className={`absolute w-1 h-1 bg-cyan-400 rounded-full animate-float-particle opacity-30`}
-              style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 5}s`,
-                animationDuration: `${3 + Math.random() * 4}s`
-              }}
-            />
-          ))}
-        </div>
-      </div>
+      {/* Falling Pattern Background */}
+      <FallingPattern 
+        className="absolute inset-0 z-0 opacity-40 [mask-image:radial-gradient(ellipse_at_center,black,transparent)]" 
+        color="#06b6d4" 
+        backgroundColor="transparent"
+      />
 
       <div className="relative z-10 flex flex-col items-center justify-center min-h-screen p-4 sm:p-8">
         <div className="w-full max-w-7xl mx-auto space-y-12 sm:space-y-16">
@@ -85,34 +65,12 @@ export const Homepage: React.FC<HomepageProps> = ({ onStartChat }) => {
               
               <div className="relative bg-slate-900/95 rounded-3xl p-8 sm:p-12 lg:p-16 border border-slate-700/50 shadow-2xl">
                 {/* Title */}
-                <div className="flex flex-col items-center space-y-6 sm:space-y-8 mb-8 sm:mb-12">
-                  <div className="flex items-center space-x-4 sm:space-x-8">
-                    <div className="relative">
-                      <div className="text-4xl sm:text-6xl lg:text-8xl font-black bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-blue-400 to-cyan-600 leading-none">
-                        AI
-                      </div>
-                      <div className="absolute inset-0 text-4xl sm:text-6xl lg:text-8xl font-black text-cyan-400 opacity-20 blur-lg animate-pulse">
-                        AI
-                      </div>
-                    </div>
-                    
-                    <div className="relative">
-                      <div className="w-8 h-8 sm:w-12 sm:h-12 lg:w-16 lg:h-16 bg-gradient-to-r from-cyan-400 via-purple-400 to-pink-400 rounded-full flex items-center justify-center animate-spin-slow">
-                        <div className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 bg-slate-900 rounded-full flex items-center justify-center">
-                          <Zap className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-cyan-400" />
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="relative">
-                      <div className="text-4xl sm:text-6xl lg:text-8xl font-black bg-clip-text text-transparent bg-gradient-to-r from-orange-400 via-red-400 to-pink-600 leading-none">
-                        HUMAN
-                      </div>
-                      <div className="absolute inset-0 text-4xl sm:text-6xl lg:text-8xl font-black text-red-400 opacity-20 blur-lg animate-pulse delay-500">
-                        HUMAN
-                      </div>
-                    </div>
-                  </div>
+                <div className="flex flex-col items-center justify-center space-y-6 sm:space-y-8 mb-8 sm:mb-12 h-[120px]">
+                  <GooeyText 
+                    texts={["AI VS HUMAN", "CONVINCE AI", "PROVE HUMAN"]} 
+                    className="font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-400 to-cyan-600" 
+                    textClassName="text-cyan-400 drop-shadow-[0_0_15px_rgba(34,211,238,0.5)]"
+                  />
                 </div>
                 
                 {/* Subtitle with more detail */}

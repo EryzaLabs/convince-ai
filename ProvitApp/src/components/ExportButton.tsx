@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+
 import {
   View,
   Text,
@@ -7,8 +8,23 @@ import {
   Alert,
   Modal,
 } from 'react-native';
-import { Message, ChatMode } from '../types/chat';
-import { exportChatConversation } from '../services/exportService';
+
+import {
+  Download,
+  FileText,
+  Share2,
+  Braces,
+  X,
+} from 'lucide-react-native';
+
+import {
+  Message,
+  ChatMode,
+} from '../types/chat';
+
+import {
+  exportChatConversation,
+} from '../services/exportService';
 
 interface ExportButtonProps {
   messages: Message[];
@@ -17,96 +33,174 @@ interface ExportButtonProps {
   disabled?: boolean;
 }
 
-export const ExportButton: React.FC<ExportButtonProps> = ({
+export const ExportButton: React.FC<
+  ExportButtonProps
+> = ({
   messages,
   mode,
   roastLevel,
-  disabled = false
+  disabled = false,
 }) => {
-  const [showDropdown, setShowDropdown] = useState(false);
+  const [open, setOpen] =
+    useState(false);
 
   const handleExport = () => {
     if (messages.length === 0) {
-      Alert.alert('No Messages', 'There are no messages to export yet. Start chatting first!');
+      Alert.alert(
+        'No messages',
+        'Start a conversation before exporting.'
+      );
+
       return;
     }
-    setShowDropdown(true);
+
+    setOpen(true);
   };
 
-  const handleExportFormat = async (format: 'json' | 'txt' | 'share') => {
-    setShowDropdown(false);
+  const exportFormat = async (
+    format: 'json' | 'txt' | 'share'
+  ) => {
+    setOpen(false);
+
     try {
-      await exportChatConversation(messages, format, mode, roastLevel);
-    } catch (error) {
-      Alert.alert('Export Error', 'Failed to export chat. Please try again.');
+      await exportChatConversation(
+        messages,
+        format,
+        mode,
+        roastLevel
+      );
+    } catch {
+      Alert.alert(
+        'Export failed',
+        'Something went wrong while exporting.'
+      );
     }
   };
 
-  if (disabled || messages.length === 0) {
+  if (
+    disabled ||
+    messages.length === 0
+  ) {
     return null;
   }
 
   return (
     <>
+      {/* Trigger */}
       <TouchableOpacity
-        style={styles.exportButton}
         onPress={handleExport}
-        activeOpacity={0.7}
+        activeOpacity={0.85}
+        style={styles.trigger}
       >
-        <Text style={styles.exportIcon}>📤</Text>
+        <Download
+          size={18}
+          color="#e2e8f0"
+        />
       </TouchableOpacity>
 
+      {/* Modal */}
       <Modal
-        visible={showDropdown}
-        transparent={true}
+        visible={open}
+        transparent
         animationType="fade"
-        onRequestClose={() => setShowDropdown(false)}
+        onRequestClose={() =>
+          setOpen(false)
+        }
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.dropdownContent}>
-            <View style={styles.dropdownHeader}>
-              <Text style={styles.dropdownTitle}>Export Chat</Text>
+        <View
+          style={styles.overlay}
+        >
+          <View
+            style={styles.modal}
+          >
+            {/* Header */}
+            <View
+              style={styles.header}
+            >
+              <View>
+                <Text
+                  style={styles.title}
+                >
+                  Export Conversation
+                </Text>
+
+                <Text
+                  style={
+                    styles.subtitle
+                  }
+                >
+                  Save or share this
+                  session in your
+                  preferred format.
+                </Text>
+              </View>
+
               <TouchableOpacity
-                onPress={() => setShowDropdown(false)}
-                style={styles.closeButton}
+                onPress={() =>
+                  setOpen(false)
+                }
+                style={
+                  styles.closeButton
+                }
               >
-                <Text style={styles.closeButtonText}>✕</Text>
+                <X
+                  size={18}
+                  color="#94a3b8"
+                />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.optionsList}>
-              <TouchableOpacity
-                style={styles.exportOption}
-                onPress={() => handleExportFormat('share')}
-              >
-                <Text style={styles.optionIcon}>📝</Text>
-                <View style={styles.optionContent}>
-                  <Text style={styles.optionTitle}>Share Text</Text>
-                  <Text style={styles.optionDescription}>Quick share as text</Text>
-                </View>
-              </TouchableOpacity>
+            {/* Options */}
+            <View
+              style={styles.options}
+            >
+              <ExportOption
+                icon={
+                  <Share2
+                    size={20}
+                    color="#60a5fa"
+                  />
+                }
+                title="Share Text"
+                description="Quick share as plain text"
+                onPress={() =>
+                  exportFormat(
+                    'share'
+                  )
+                }
+              />
 
-              <TouchableOpacity
-                style={styles.exportOption}
-                onPress={() => handleExportFormat('txt')}
-              >
-                <Text style={styles.optionIcon}>📄</Text>
-                <View style={styles.optionContent}>
-                  <Text style={styles.optionTitle}>Export TXT</Text>
-                  <Text style={styles.optionDescription}>Plain text format</Text>
-                </View>
-              </TouchableOpacity>
+              <ExportOption
+                icon={
+                  <FileText
+                    size={20}
+                    color="#60a5fa"
+                  />
+                }
+                title="Export TXT"
+                description="Readable conversation format"
+                onPress={() =>
+                  exportFormat(
+                    'txt'
+                  )
+                }
+              />
 
-              <TouchableOpacity
-                style={styles.exportOption}
-                onPress={() => handleExportFormat('json')}
-              >
-                <Text style={styles.optionIcon}>🗂️</Text>
-                <View style={styles.optionContent}>
-                  <Text style={styles.optionTitle}>Export JSON</Text>
-                  <Text style={styles.optionDescription}>Structured data format</Text>
-                </View>
-              </TouchableOpacity>
+              <ExportOption
+                icon={
+                  <Braces
+                    size={20}
+                    color="#60a5fa"
+                  />
+                }
+                title="Export JSON"
+                description="Structured conversation data"
+                onPress={() =>
+                  exportFormat(
+                    'json'
+                  )
+                }
+              />
             </View>
           </View>
         </View>
@@ -115,79 +209,179 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
   );
 };
 
+interface ExportOptionProps {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  onPress: () => void;
+}
+
+const ExportOption: React.FC<
+  ExportOptionProps
+> = ({
+  icon,
+  title,
+  description,
+  onPress,
+}) => {
+  return (
+    <TouchableOpacity
+      activeOpacity={0.85}
+      onPress={onPress}
+      style={styles.option}
+    >
+      <View
+        style={styles.optionIcon}
+      >
+        {icon}
+      </View>
+
+      <View
+        style={
+          styles.optionContent
+        }
+      >
+        <Text
+          style={
+            styles.optionTitle
+          }
+        >
+          {title}
+        </Text>
+
+        <Text
+          style={
+            styles.optionDescription
+          }
+        >
+          {description}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
 const styles = StyleSheet.create({
-  exportButton: {
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: 'rgba(148, 163, 184, 0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  exportIcon: {
-    fontSize: 18,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  dropdownContent: {
-    backgroundColor: '#1e293b',
-    borderRadius: 16,
-    margin: 20,
-    minWidth: 280,
+  trigger: {
+    width: 38,
+    height: 38,
+
+    borderRadius: 999,
+
+    backgroundColor: '#0f172a',
+
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1e293b',
+
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  dropdownHeader: {
+
+  overlay: {
+    flex: 1,
+
+    backgroundColor:
+      'rgba(0,0,0,0.6)',
+
+    justifyContent: 'center',
+    alignItems: 'center',
+
+    padding: 20,
+  },
+
+  modal: {
+    width: '100%',
+
+    backgroundColor: '#020617',
+
+    borderRadius: 24,
+
+    borderWidth: 1,
+    borderColor: '#1e293b',
+
+    padding: 22,
+  },
+
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#334155',
+
+    marginBottom: 22,
   },
-  dropdownTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+
+  title: {
+    fontSize: 20,
+    fontWeight: '700',
     color: '#ffffff',
   },
+
+  subtitle: {
+    fontSize: 14,
+    color: '#94a3b8',
+
+    marginTop: 4,
+
+    lineHeight: 20,
+  },
+
   closeButton: {
-    padding: 8,
-    borderRadius: 12,
-    backgroundColor: 'rgba(148, 163, 184, 0.2)',
+    width: 34,
+    height: 34,
+
+    borderRadius: 999,
+
+    backgroundColor: '#0f172a',
+
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  closeButtonText: {
-    fontSize: 16,
-    color: '#ffffff',
+
+  options: {
+    gap: 12,
   },
-  optionsList: {
-    padding: 8,
-  },
-  exportOption: {
+
+  option: {
     flexDirection: 'row',
     alignItems: 'center',
+
+    backgroundColor: '#0f172a',
+
+    borderRadius: 18,
+
+    borderWidth: 1,
+    borderColor: '#1e293b',
+
     padding: 16,
-    borderRadius: 12,
-    marginVertical: 4,
-    backgroundColor: 'rgba(30, 41, 59, 0.5)',
   },
+
   optionIcon: {
-    fontSize: 24,
-    marginRight: 16,
+    width: 42,
+    height: 42,
+
+    borderRadius: 14,
+
+    backgroundColor: '#111827',
+
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    marginRight: 14,
   },
+
   optionContent: {
     flex: 1,
   },
+
   optionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#ffffff',
-    marginBottom: 4,
   },
+
   optionDescription: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#94a3b8',
+
+    marginTop: 4,
   },
 });

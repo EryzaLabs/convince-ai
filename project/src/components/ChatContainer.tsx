@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { ChatMessage } from './ChatMessage';
-import { ChatInput } from './ChatInput';
+import { PromptInputBox } from '@/components/ui/ai-prompt-box';
 import { Message, ChatMode } from '../types/chat';
 import { Cpu, Eye, Zap, Network } from 'lucide-react';
 
@@ -131,8 +131,8 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
       
       {/* Input Container - Fixed at bottom */}
       <div className="chat-input-container flex-shrink-0 p-4 sm:p-6 lg:p-8 pt-4 bg-slate-900 border-t border-slate-700/50 relative z-10 shadow-lg shadow-slate-900/50">
-        <ChatInput 
-          onSendMessage={onSendMessage} 
+        <PromptInputBox 
+          onSend={(message) => onSendMessage(message)} 
           isLoading={isLoading} 
           placeholder={getPlaceholder()}
         />

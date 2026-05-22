@@ -1,454 +1,484 @@
 import React, { useState } from 'react';
+
 import {
   View,
   Text,
-  TouchableOpacity,
   StyleSheet,
-  StatusBar,
-  Alert,
+  TouchableOpacity,
   Modal,
-  ScrollView,
 } from 'react-native';
+
 import Slider from '@react-native-community/slider';
-import { Message, ChatMode } from '../types/chat';
+
+import {
+  Menu,
+  Flame,
+  X,
+} from 'lucide-react-native';
+
+import {
+  Message,
+  ChatMode,
+} from '../types/chat';
+
 import { ExportButton } from './ExportButton';
 
 interface HeaderProps {
-  onBackToHome?: () => void;
-  onShowSettings?: () => void;
   onToggleSidebar?: () => void;
-  onRoastLevelChange?: (level: number) => void;
+
+  onRoastLevelChange?: (
+    level: number
+  ) => void;
+
   messages?: Message[];
+
   mode?: ChatMode;
+
   roastLevel?: number;
 }
 
-export const Header: React.FC<HeaderProps> = ({ 
-  onBackToHome, 
-  onShowSettings,
+export const Header: React.FC<
+  HeaderProps
+> = ({
   onToggleSidebar,
   onRoastLevelChange,
   messages = [],
   mode = 'convince-ai',
-  roastLevel = 5
-}) => {  
-  const [showRoastPicker, setShowRoastPicker] = useState(false);
-  const [tempRoastLevel, setTempRoastLevel] = useState(roastLevel);
-  const handleExportChat = () => {
-    // This is now handled by ExportButton component
-  };const handleRoastLevelPress = () => {
-    setTempRoastLevel(roastLevel);
-    setShowRoastPicker(true);
+  roastLevel = 5,
+}) => {
+  const [showModal, setShowModal] =
+    useState(false);
+
+  const [tempLevel, setTempLevel] =
+    useState(roastLevel);
+
+  const openModal = () => {
+    setTempLevel(roastLevel);
+    setShowModal(true);
   };
 
-  const handleRoastLevelConfirm = () => {
-    onRoastLevelChange?.(tempRoastLevel);
-    setShowRoastPicker(false);
+  const closeModal = () => {
+    setShowModal(false);
   };
 
-  const handleRoastLevelCancel = () => {
-    setTempRoastLevel(roastLevel);
-    setShowRoastPicker(false);
+  const applyLevel = () => {
+    onRoastLevelChange?.(tempLevel);
+
+    setShowModal(false);
   };
 
-  const getRoastLevelData = (level: number) => {
-    if (level <= 3) return {
-      label: 'NEURAL TICKLE',
-      emoji: '⚡',
-      color: '#22c55e',
-      description: 'Gentle cognitive stimulation protocols'
-    };
-    if (level <= 6) return {
-      label: 'SYNAPTIC BURN',
-      emoji: '🔥',
-      color: '#f97316',
-      description: 'Moderate psychological warfare systems'
-    };
-    if (level <= 8) return {
-      label: 'CORTEX MELTDOWN',
-      emoji: '💀',
-      color: '#dc2626',
-      description: 'Advanced ego destruction algorithms'
-    };
-    return {
-      label: 'QUANTUM ANNIHILATION',
-      emoji: '☢️',
-      color: '#a855f7',
-      description: 'Reality-bending consciousness obliteration'
-    };
+  const getLevelLabel = (
+    level: number
+  ) => {
+    if (level <= 3) return 'Light';
+
+    if (level <= 6) return 'Balanced';
+
+    if (level <= 8) return 'Aggressive';
+
+    return 'Unhinged';
   };
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#0f172a" />
-      
-      <View style={styles.header}>
-        <View style={styles.leftSection}>
+    <>
+      <View style={styles.container}>
+        {/* Left */}
+        <View style={styles.left}>
           {onToggleSidebar && (
-            <TouchableOpacity 
-              onPress={onToggleSidebar} 
-              style={styles.iconButton}
+            <TouchableOpacity
+              onPress={
+                onToggleSidebar
+              }
+              style={
+                styles.iconButton
+              }
             >
-              <Text style={styles.icon}>☰</Text>
+              <Menu
+                size={20}
+                color="#e2e8f0"
+              />
             </TouchableOpacity>
           )}
-          
-          {onBackToHome && (
-            <TouchableOpacity 
-              onPress={onBackToHome} 
-              style={styles.iconButton}
+
+          <View style={styles.titleArea}>
+            <Text style={styles.title}>
+              ProvIt
+            </Text>
+
+            <Text
+              style={styles.subtitle}
             >
-              <Text style={styles.icon}>🏠</Text>
-            </TouchableOpacity>
-          )}
-          
-          <View style={styles.titleSection}>
-            <Text style={styles.title}>AI Chat</Text>
-            {mode && (
-              <Text style={styles.subtitle}>
-                {mode === 'convince-ai' ? '🤖 Convince AI' : '👤 Prove Human'}
-              </Text>
-            )}
+              {mode ===
+              'convince-ai'
+                ? 'Convince AI'
+                : 'Prove Human'}
+            </Text>
           </View>
         </View>
-        
-        <View style={styles.rightSection}>
-          {/* Roast Level Button */}
+
+        {/* Right */}
+        <View style={styles.right}>
           {onRoastLevelChange && (
             <TouchableOpacity
-              onPress={handleRoastLevelPress}
-              style={[styles.roastButton, getRoastButtonStyle(roastLevel)]}
+              onPress={openModal}
+              style={
+                styles.levelButton
+              }
             >
-              <Text style={styles.roastLevel}>{roastLevel}</Text>
-              <Text style={styles.roastIcon}>🌶️</Text>
+              <Flame
+                size={16}
+                color="#60a5fa"
+              />
+
+              <Text
+                style={
+                  styles.levelText
+                }
+              >
+                {roastLevel}
+              </Text>
             </TouchableOpacity>
-          )}          
-          {/* Export Button */}
-          <ExportButton 
+          )}
+
+          <ExportButton
             messages={messages}
             mode={mode}
             roastLevel={roastLevel}
           />
-          
-          {/* {onShowSettings && (
-            <TouchableOpacity
-              onPress={onShowSettings}
-              style={styles.iconButton}
-            >
-              <Text style={styles.icon}>⚙️</Text>
-            </TouchableOpacity>
-          )}         */}
-          </View>
-      </View>      
-      {/* Roast Level Picker Modal */}
+        </View>
+      </View>
+
+      {/* Roast Modal */}
       <Modal
-        visible={showRoastPicker}
-        transparent={true}
+        visible={showModal}
+        transparent
         animationType="fade"
-        onRequestClose={handleRoastLevelCancel}
+        onRequestClose={closeModal}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>🌶️ Roast Level</Text>
+        <View
+          style={styles.modalOverlay}
+        >
+          <View
+            style={styles.modal}
+          >
+            {/* Header */}
+            <View
+              style={
+                styles.modalHeader
+              }
+            >
+              <View>
+                <Text
+                  style={
+                    styles.modalTitle
+                  }
+                >
+                  Response Style
+                </Text>
+
+                <Text
+                  style={
+                    styles.modalSubtitle
+                  }
+                >
+                  Control how intense
+                  the AI responses
+                  feel.
+                </Text>
+              </View>
+
               <TouchableOpacity
-                onPress={handleRoastLevelCancel}
-                style={styles.closeButton}
+                onPress={closeModal}
+                style={
+                  styles.closeButton
+                }
               >
-                <Text style={styles.closeButtonText}>✕</Text>
+                <X
+                  size={18}
+                  color="#94a3b8"
+                />
               </TouchableOpacity>
             </View>
-            
-            <View style={styles.sliderContainer}>
-              {/* Current Level Display */}
-              <View style={styles.currentLevelDisplay}>
-                <View style={[styles.levelBadge, { backgroundColor: getRoastLevelData(tempRoastLevel).color + '20', borderColor: getRoastLevelData(tempRoastLevel).color }]}>
-                  <Text style={styles.levelBadgeEmoji}>
-                    {getRoastLevelData(tempRoastLevel).emoji}
-                  </Text>
-                  <Text style={[styles.levelBadgeNumber, { color: getRoastLevelData(tempRoastLevel).color }]}>
-                    {tempRoastLevel}
-                  </Text>
-                </View>
-                <Text style={[styles.levelLabel, { color: getRoastLevelData(tempRoastLevel).color }]}>
-                  {getRoastLevelData(tempRoastLevel).label}
-                </Text>
-                <Text style={styles.levelDescription}>
-                  {getRoastLevelData(tempRoastLevel).description}
-                </Text>
-              </View>
 
-              {/* Slider */}
-              <View style={styles.sliderWrapper}>
-                <View style={styles.sliderTrack}>
-                  {/* Level markers */}
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((level) => (
-                    <View
-                      key={level}
-                      style={[
-                        styles.sliderMarker,
-                        level <= tempRoastLevel && { backgroundColor: getRoastLevelData(tempRoastLevel).color }
-                      ]}
-                    />
-                  ))}
-                </View>
-                  <Slider
-                  style={styles.slider}
-                  minimumValue={1}
-                  maximumValue={10}
-                  step={1}
-                  value={tempRoastLevel}
-                  onValueChange={setTempRoastLevel}
-                  minimumTrackTintColor={getRoastLevelData(tempRoastLevel).color}
-                  maximumTrackTintColor="rgba(148, 163, 184, 0.3)"
-                  thumbTintColor={getRoastLevelData(tempRoastLevel).color}
-                />
-                
-                {/* Level indicators */}
-                <View style={styles.levelIndicators}>
-                  <Text style={styles.levelIndicator}>1</Text>
-                  <Text style={styles.levelIndicator}>5</Text>
-                  <Text style={styles.levelIndicator}>10</Text>
-                </View>
-              </View>
+            {/* Level */}
+            <View
+              style={
+                styles.levelDisplay
+              }
+            >
+              <Text
+                style={
+                  styles.levelNumber
+                }
+              >
+                {tempLevel}
+              </Text>
 
-              {/* Action Buttons */}
-              <View style={styles.actionButtons}>
-                <TouchableOpacity
-                  style={styles.cancelButton}
-                  onPress={handleRoastLevelCancel}
+              <Text
+                style={
+                  styles.levelLabel
+                }
+              >
+                {getLevelLabel(
+                  tempLevel
+                )}
+              </Text>
+            </View>
+
+            {/* Slider */}
+            <Slider
+              style={styles.slider}
+              minimumValue={1}
+              maximumValue={10}
+              step={1}
+              value={tempLevel}
+              onValueChange={
+                setTempLevel
+              }
+              minimumTrackTintColor="#3b82f6"
+              maximumTrackTintColor="#1e293b"
+              thumbTintColor="#3b82f6"
+            />
+
+            {/* Footer */}
+            <View
+              style={
+                styles.modalFooter
+              }
+            >
+              <TouchableOpacity
+                onPress={closeModal}
+                style={
+                  styles.cancelButton
+                }
+              >
+                <Text
+                  style={
+                    styles.cancelText
+                  }
                 >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.confirmButton, { backgroundColor: getRoastLevelData(tempRoastLevel).color }]}
-                  onPress={handleRoastLevelConfirm}
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={applyLevel}
+                style={
+                  styles.applyButton
+                }
+              >
+                <Text
+                  style={
+                    styles.applyText
+                  }
                 >
-                  <Text style={styles.confirmButtonText}>Apply Level</Text>
-                </TouchableOpacity>
-              </View>
+                  Apply
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
       </Modal>
-    </View>
+    </>
   );
-};
-
-const getRoastButtonStyle = (level: number) => {
-  if (level <= 3) return styles.roastButtonLow;
-  if (level <= 6) return styles.roastButtonMedium;
-  return styles.roastButtonHigh;
 };
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: '#0f172a',
+    height: 72,
+    backgroundColor: '#020617',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(148, 163, 184, 0.1)',
-  },
-  header: {
+    borderBottomColor: '#111827',
+
+    paddingHorizontal: 14,
+
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingTop: 16,
   },
-  leftSection: {
+
+  left: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
   },
-  rightSection: {
+
+  right: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
-  titleSection: {
-    marginLeft: 8,
-  },
+
   iconButton: {
-    padding: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(148, 163, 184, 0.1)',
+    width: 38,
+    height: 38,
+    borderRadius: 999,
+
+    alignItems: 'center',
+    justifyContent: 'center',
+
+    backgroundColor: '#0f172a',
   },
-  icon: {
-    fontSize: 20,
-    color: '#ffffff',
+
+  titleArea: {
+    justifyContent: 'center',
+    marginLeft: 12,
   },
+
   title: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: '#ffffff',
   },
+
   subtitle: {
     fontSize: 12,
-    color: '#94a3b8',
+    color: '#64748b',
     marginTop: 2,
   },
-  roastButton: {
+
+  levelButton: {
+    height: 36,
+
+    paddingHorizontal: 12,
+
+    borderRadius: 999,
+
+    backgroundColor: '#0f172a',
+
+    borderWidth: 1,
+    borderColor: '#1e293b',
+
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 4,
+    gap: 6,
   },
-  roastButtonLow: {
-    backgroundColor: 'rgba(34, 197, 94, 0.2)',
-    borderColor: '#22c55e',
-  },
-  roastButtonMedium: {
-    backgroundColor: 'rgba(249, 115, 22, 0.2)',
-    borderColor: '#f97316',
-  },
-  roastButtonHigh: {
-    backgroundColor: 'rgba(239, 68, 68, 0.2)',
-    borderColor: '#ef4444',
-  },
-  roastLevel: {
-    fontSize: 14,
-    fontWeight: 'bold',
+
+  levelText: {
     color: '#ffffff',
-  },  roastIcon: {
-    fontSize: 12,
-  },  
-  // Modal styles
+    fontWeight: '600',
+    fontSize: 13,
+  },
+
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor:
+      'rgba(0,0,0,0.6)',
+
     justifyContent: 'center',
     alignItems: 'center',
+
+    padding: 20,
   },
-  modalContent: {
-    backgroundColor: '#1e293b',
-    borderRadius: 20,
-    margin: 20,
-    minWidth: "90%",
+
+  modal: {
+    width: '100%',
+
+    backgroundColor: '#020617',
+
+    borderRadius: 24,
+
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#1e293b',
+
+    padding: 22,
   },
+
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#334155',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  closeButton: {
-    padding: 8,
-    borderRadius: 15,
-    backgroundColor: 'rgba(148, 163, 184, 0.2)',
-  },
-  closeButtonText: {
-    fontSize: 16,
-    color: '#ffffff',
-  },
-  sliderContainer: {
-    padding: 24,
-  },
-  currentLevelDisplay: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  levelBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 2,
-    marginBottom: 12,
-  },
-  levelBadgeEmoji: {
-    fontSize: 24,
-    marginRight: 8,
-  },
-  levelBadgeNumber: {
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  levelLabel: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  levelDescription: {
-    fontSize: 14,
-    color: '#94a3b8',
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  sliderWrapper: {
+
     marginBottom: 24,
   },
-  sliderTrack: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+
+  modalTitle: {
+    color: '#ffffff',
+    fontSize: 20,
+    fontWeight: '700',
+  },
+
+  modalSubtitle: {
+    color: '#94a3b8',
+    fontSize: 14,
+    marginTop: 4,
+    lineHeight: 20,
+  },
+
+  closeButton: {
+    width: 34,
+    height: 34,
+
+    borderRadius: 999,
+
     alignItems: 'center',
-    height: 4,
-    backgroundColor: 'rgba(148, 163, 184, 0.3)',
-    borderRadius: 2,
-    marginBottom: 8,
-    paddingHorizontal: 12,
+    justifyContent: 'center',
+
+    backgroundColor: '#0f172a',
   },
-  sliderMarker: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(148, 163, 184, 0.5)',
+
+  levelDisplay: {
+    alignItems: 'center',
+    marginBottom: 26,
   },
+
+  levelNumber: {
+    fontSize: 48,
+    fontWeight: '800',
+    color: '#ffffff',
+  },
+
+  levelLabel: {
+    fontSize: 15,
+    color: '#60a5fa',
+    marginTop: 4,
+    fontWeight: '600',
+  },
+
   slider: {
     width: '100%',
     height: 40,
   },
-  levelIndicators: {
+
+  modalFooter: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    marginTop: 8,
-  },
-  levelIndicator: {
-    fontSize: 12,
-    color: '#94a3b8',
-    fontWeight: '500',
-  },
-  actionButtons: {
-    flexDirection: 'row',
+    marginTop: 28,
     gap: 12,
   },
+
   cancelButton: {
     flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 10,
-    backgroundColor: 'rgba(148, 163, 184, 0.2)',
+
+    height: 48,
+
+    borderRadius: 14,
+
+    backgroundColor: '#111827',
+
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  cancelButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  confirmButton: {
+
+  applyButton: {
     flex: 1,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 10,
+
+    height: 48,
+
+    borderRadius: 14,
+
+    backgroundColor: '#2563eb',
+
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  confirmButtonText: {
+
+  cancelText: {
+    color: '#cbd5e1',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+
+  applyText: {
     color: '#ffffff',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

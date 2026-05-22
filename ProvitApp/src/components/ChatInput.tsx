@@ -1,342 +1,360 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, {
+  useRef,
+  useState,
+} from 'react';
+
 import {
   View,
-  Text,
   TextInput,
   TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
   Platform,
   Animated,
-  Alert,
+  Text,
 } from 'react-native';
 
+import {
+  Paperclip,
+  SendHorizonal,
+  Smile,
+} from 'lucide-react-native';
+
+import EmojiPicker from 'rn-emoji-keyboard';
+
 interface ChatInputProps {
-  onSendMessage: (message: string) => void;
+  onSendMessage: (
+    message: string
+  ) => void;
+
   isLoading: boolean;
+
   placeholder?: string;
 }
 
-export const ChatInput: React.FC<ChatInputProps> = ({ 
-  onSendMessage, 
-  isLoading, 
-  placeholder = "Enter neural transmission..." 
+export const ChatInput: React.FC<
+  ChatInputProps
+> = ({
+  onSendMessage,
+  isLoading,
+  placeholder = 'Ask anything...',
 }) => {
-  const [message, setMessage] = useState('');
-  const [isFocused, setIsFocused] = useState(false);
-  
-  // Animation values
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
-  
-  const textInputRef = useRef<TextInput>(null);
+  const [message, setMessage] =
+    useState('');
 
-  // Focus animations
-  useEffect(() => {
-    if (isFocused) {
-      Animated.timing(glowAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: false,
-      }).start();
-    } else {
-      Animated.timing(glowAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: false,
-      }).start();
-    }
-  }, [isFocused]);
+  const [emojiOpen, setEmojiOpen] =
+    useState(false);
 
-  const handleSend = () => {
-    if (message.trim() && !isLoading) {
-      if (message.trim().length > 1000) {
-        Alert.alert('Message Too Long', 'Please keep your message under 1000 characters.');
-        return;
-      }
-      
-      onSendMessage(message.trim());
-      setMessage('');
-      textInputRef.current?.blur();
-    }
-  };
+  const inputRef =
+    useRef<TextInput>(null);
 
-  const startPulseAnimation = () => {
+  const scaleAnim =
+    useRef(
+      new Animated.Value(1)
+    ).current;
+
+  const canSend =
+    message.trim().length > 0;
+
+  const animateButton = () => {
     Animated.sequence([
-      Animated.timing(pulseAnim, {
-        toValue: 0.9,
-        duration: 100,
+      Animated.timing(scaleAnim, {
+        toValue: 0.92,
+        duration: 70,
         useNativeDriver: true,
       }),
-      Animated.timing(pulseAnim, {
+
+      Animated.timing(scaleAnim, {
         toValue: 1,
-        duration: 100,
+        duration: 70,
         useNativeDriver: true,
       }),
     ]).start();
   };
 
-  const handleFocus = () => {
-    setIsFocused(true);
-  };
+  const handleSend = () => {
+    if (
+      !canSend ||
+      isLoading
+    )
+      return;
 
-  const handleBlur = () => {
-    setIsFocused(false);
-  };
+    const trimmed =
+      message.trim();
 
-  const messageLength = message.length;
-  const isNearLimit = messageLength > 800;
-  const canSend = message.trim() && !isLoading;
+    onSendMessage(trimmed);
+
+    setMessage('');
+
+    // KEEP KEYBOARD OPEN
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
+  };
 
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.keyboardContainer}
+    <KeyboardAvoidingView
+      behavior={
+        Platform.OS === 'ios'
+          ? 'padding'
+          : undefined
+      }
+      keyboardVerticalOffset={
+        10
+      }
     >
-      <View style={styles.container}>
-        {/* Background glow */}
-        <Animated.View 
-          style={[
-            styles.backgroundGlow, 
-            {
-              opacity: glowAnim,
-              backgroundColor: isFocused ? 'rgba(6, 182, 212, 0.15)' : 'rgba(71, 85, 105, 0.1)'
-            }
-          ]} 
-          pointerEvents="none"
-        />
-        
-        {/* Main input container */}
-        <Animated.View style={[
-          styles.inputContainer,
-          {
-            borderColor: isFocused ? 'rgba(6, 182, 212, 0.8)' : 'rgba(71, 85, 105, 0.3)',
-            shadowOpacity: isFocused ? 0.3 : 0.1
+      <View style={styles.wrapper}>
+        <View
+          style={
+            styles.container
           }
-        ]}>
-          
-          {/* Input row */}
-          <View style={styles.inputRow}>
-            {/* Status indicator */}
-            <View style={styles.statusIndicator}>
-              <View style={[
-                styles.statusDot,
-                { backgroundColor: isLoading ? '#f59e0b' : canSend ? '#10b981' : '#6b7280' }
-              ]} />
-            </View>
-            
-            <TextInput
-              ref={textInputRef}
-              style={[
-                styles.textInput,
-                isFocused && styles.textInputFocused,
-                isNearLimit && styles.textInputWarning
-              ]}
-              value={message}
-              onChangeText={setMessage}
-              placeholder={placeholder}
-              placeholderTextColor={isFocused ? "#94a3b8" : "#64748b"}
-              multiline
-              maxLength={1000}
-              editable={!isLoading}
-              returnKeyType="send"
-              onSubmitEditing={handleSend}
-              onFocus={handleFocus}
-              onBlur={handleBlur}
-              blurOnSubmit={false}
-              textAlignVertical="top"
-              autoCorrect={true}
-              autoCapitalize="sentences"
+        >
+          {/* Attachment */}
+          <TouchableOpacity
+            style={
+              styles.iconButton
+            }
+          >
+            <Paperclip
+              size={20}
+              color="#94a3b8"
             />
-            
-            {/* Character counter */}
-            {messageLength > 500 && (
-              <View style={styles.characterCounter}>
-                <Text style={[
-                  styles.characterCountText,
-                  isNearLimit && styles.characterCountWarning
-                ]}>
-                  {messageLength}/1000
-                </Text>
-              </View>
-            )}
-            
-            {/* Send button */}
-            <Animated.View style={{ transform: [{ scale: pulseAnim }] }}>
-              <TouchableOpacity
-                style={[
-                  styles.sendButton,
-                  !canSend && styles.sendButtonDisabled,
-                  isLoading && styles.sendButtonLoading
-                ]}
-                onPress={() => {
-                  startPulseAnimation();
-                  handleSend();
-                }}
-                disabled={!canSend}
-                activeOpacity={0.8}
-              >
-                <View
-                  style={[
-                    styles.sendButtonGradient,
-                    {
-                      backgroundColor: isLoading 
-                        ? '#f59e0b' 
-                        : canSend 
-                          ? '#06b6d4' 
-                          : '#374151'
-                    }
-                  ]}
-                >
-                  <Text style={styles.sendButtonText}>
-                    {isLoading ? '⏳' : canSend ? '🚀' : '💭'}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </Animated.View>
-          </View>
-        </Animated.View>
-        
+          </TouchableOpacity>
+
+          {/* Input */}
+          <TextInput
+            ref={inputRef}
+            value={message}
+            onChangeText={
+              setMessage
+            }
+            placeholder={
+              placeholder
+            }
+            placeholderTextColor="#64748b"
+            multiline
+            maxLength={1200}
+            editable={
+              true
+            }
+            style={styles.input}
+            blurOnSubmit={false}
+            returnKeyType="send"
+            onSubmitEditing={() => {
+              handleSend();
+            }}
+          />
+
+          {/* Emoji */}
+          <TouchableOpacity
+            style={
+              styles.iconButton
+            }
+            onPress={() =>
+              setEmojiOpen(true)
+            }
+          >
+            <Smile
+              size={20}
+              color="#94a3b8"
+            />
+          </TouchableOpacity>
+
+          {/* Send */}
+          <Animated.View
+            style={{
+              transform: [
+                {
+                  scale:
+                    scaleAnim,
+                },
+              ],
+            }}
+          >
+            <TouchableOpacity
+              activeOpacity={
+                0.85
+              }
+              disabled={
+                !canSend ||
+                isLoading
+              }
+              onPress={() => {
+                animateButton();
+
+                handleSend();
+              }}
+              style={[
+                styles.sendButton,
+
+                (!canSend ||
+                  isLoading) &&
+                  styles.sendButtonDisabled,
+              ]}
+            >
+              <SendHorizonal
+                size={18}
+                color="#ffffff"
+              />
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text
+            style={
+              styles.counter
+            }
+          >
+            {message.length}
+            /1200
+          </Text>
+
+          {isLoading && (
+            <Text
+              style={
+                styles.processing
+              }
+            >
+              Thinking...
+            </Text>
+          )}
+        </View>
       </View>
+
+      {/* Emoji Picker */}
+      <EmojiPicker
+        open={emojiOpen}
+        onClose={() =>
+          setEmojiOpen(false)
+        }
+        onEmojiSelected={emoji => {
+          setMessage(
+            prev =>
+              prev +
+              emoji.emoji
+          );
+
+          requestAnimationFrame(() => {
+            inputRef.current?.focus();
+          });
+        }}
+      />
     </KeyboardAvoidingView>
   );
 };
 
-const styles = StyleSheet.create({
-  keyboardContainer: {
-    backgroundColor: '#0f172a',
-  },
-  container: {
-    position: 'relative',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#0f172a',
-  },
-  backgroundGlow: {
-    position: 'absolute'
-  },
-  
-  inputContainer: {
-    backgroundColor: 'rgba(15, 23, 42, 0.95)',
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: 'rgba(71, 85, 105, 0.3)',
-    padding: 16,
-    position: 'relative',
-    zIndex: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 12,
-    minHeight: 44,
-  },
-  
-  statusIndicator: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.3,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  
-  textInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#ffffff',
-    backgroundColor: 'transparent',
-    paddingVertical: 12,
-    paddingHorizontal: 0,
-    maxHeight: 120,
-    lineHeight: 22,
-    textAlignVertical: 'top',
-    minHeight: 44,
-  },
-  
-  textInputFocused: {
-    color: '#e2e8f0',
-  },
-  
-  textInputWarning: {
-    color: '#fbbf24',
-  },
-  
-  characterCounter: {
-    position: 'absolute',
-    top: -25,
-    right: 10,
-    backgroundColor: 'rgba(30, 41, 59, 0.9)',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-    zIndex: 10,
-  },
-  
-  characterCountText: {
-    fontSize: 10,
-    color: '#94a3b8',
-    fontWeight: '500',
-  },
-  
-  characterCountWarning: {
-    color: '#fbbf24',
-  },
-  
-  sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  
-  sendButtonDisabled: {
-    opacity: 0.5,
-  },
-  
-  sendButtonLoading: {
-    opacity: 0.8,
-  },
-  
-  sendButtonGradient: {
-    width: '100%',
-    height: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 22,
-  },
-  
-  sendButtonText: {
-    fontSize: 18,
-  },
-  
-  // Loading indicator
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-    gap: 8,
-  },
-  
-  loadingText: {
-    color: '#94a3b8',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-});
+const styles =
+  StyleSheet.create({
+    wrapper: {
+      paddingHorizontal: 14,
+      paddingTop: 10,
+      paddingBottom: 14,
+
+      backgroundColor:
+        '#020617',
+
+      borderTopWidth: 1,
+
+      borderTopColor:
+        '#111827',
+    },
+
+    container: {
+      flexDirection: 'row',
+
+      alignItems:
+        'flex-end',
+
+      backgroundColor:
+        '#0f172a',
+
+      borderWidth: 1,
+
+      borderColor:
+        '#1e293b',
+
+      borderRadius: 26,
+
+      paddingHorizontal: 8,
+
+      paddingVertical: 8,
+
+      minHeight: 58,
+    },
+
+    input: {
+      flex: 1,
+
+      color: '#ffffff',
+
+      fontSize: 16,
+
+      lineHeight: 22,
+
+      maxHeight: 140,
+
+      paddingHorizontal: 10,
+
+      paddingTop: 10,
+
+      paddingBottom: 10,
+    },
+
+    iconButton: {
+      width: 38,
+      height: 38,
+
+      borderRadius: 999,
+
+      alignItems: 'center',
+
+      justifyContent:
+        'center',
+    },
+
+    sendButton: {
+      width: 42,
+      height: 42,
+
+      borderRadius: 999,
+
+      backgroundColor:
+        '#2563eb',
+
+      alignItems: 'center',
+
+      justifyContent:
+        'center',
+    },
+
+    sendButtonDisabled: {
+      opacity: 0.4,
+    },
+
+    footer: {
+      marginTop: 8,
+
+      paddingHorizontal: 4,
+
+      flexDirection: 'row',
+
+      justifyContent:
+        'space-between',
+
+      alignItems: 'center',
+    },
+
+    counter: {
+      color: '#64748b',
+
+      fontSize: 11,
+    },
+
+    processing: {
+      color: '#94a3b8',
+
+      fontSize: 11,
+    },
+  });
