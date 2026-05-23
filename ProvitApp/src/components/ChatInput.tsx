@@ -27,7 +27,7 @@ import EmojiPicker from 'rn-emoji-keyboard';
 import { Message } from '../types/chat';
 
 interface ChatInputProps {
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string, replyTo?: Message['replyTo']) => void;
   isLoading: boolean;
   placeholder?: string;
   replyTo?: Message | null;
@@ -85,17 +85,18 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   const handleSend = () => {
     if (!canSend || isLoading) return;
 
-    let finalMessage = message.trim();
+    const finalMessage = message.trim();
+    let replyMetadata: Message['replyTo'] | undefined = undefined;
 
-    // Prepend the quoted reply so the AI sees the context
     if (replyTo) {
-      const sender = replyTo.sender === 'user' ? 'You' : 'AI';
-      const snippet = replyTo.content.slice(0, 120);
-      finalMessage = `[Replying to ${sender}: "${snippet}${replyTo.content.length > 120 ? '…' : ''}"]\n${finalMessage}`;
+      replyMetadata = {
+        sender: replyTo.sender,
+        content: replyTo.content
+      };
       onCancelReply?.();
     }
 
-    onSendMessage(finalMessage);
+    onSendMessage(finalMessage, replyMetadata);
     setMessage('');
 
     requestAnimationFrame(() => {

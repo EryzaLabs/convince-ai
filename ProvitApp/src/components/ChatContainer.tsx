@@ -27,7 +27,7 @@ import {
 
 interface ChatContainerProps {
   messages: Message[];
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string, replyTo?: Message['replyTo']) => void;
   isLoading: boolean;
   mode: ChatMode;
   roastLevel?: number;

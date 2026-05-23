@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
-import { ChatSession, ChatMode } from '../types/chat';
+import { ChatSession, ChatMode, Message } from '../types/chat';
 import { openAIService } from '../services/openai';
 import { chatStorage, generateId } from '../services/chatStorage';
 import { detectWin, calcStars } from '../services/winDetection';
@@ -126,13 +126,14 @@ export const useChat = () => {
     });
   }, []);
 
-  const addMessage = useCallback((content: string, sender: 'user' | 'ai', isTyping = false) => {
+  const addMessage = useCallback((content: string, sender: 'user' | 'ai', isTyping = false, replyTo?: Message['replyTo']) => {
     const message = {
       id: Date.now().toString() + Math.random(),
       content,
       sender,
       timestamp: new Date(),
-      isTyping
+      isTyping,
+      replyTo
     };
 
     setState(prev => {
@@ -240,11 +241,19 @@ export const useChat = () => {
     const typingId = addMessage('', 'ai', true);
 
     try {
-      const conversationHistory = currentChatSnapshot.messages.map(msg => ({
-        role: msg.sender === 'user' ? 'user' as const : 'assistant' as const,
-        content: msg.content,
-        timestamp: msg.timestamp instanceof Date ? msg.timestamp.toISOString() : new Date(msg.timestamp).toISOString()
-      }));
+      const conversationHistory = currentChatSnapshot.messages.map(msg => {
+        let msgContent = msg.content;
+        if (msg.replyTo) {
+          const replySenderLabel = msg.replyTo.sender === 'user' ? 'You' : 'AI';
+          const snippet = msg.replyTo.content.slice(0, 120);
+          msgContent = `[Replying to ${replySenderLabel}: "${snippet}${msg.replyTo.content.length > 120 ? '…' : ''}"]\n${msgContent}`;
+        }
+        return {
+          role: msg.sender === 'user' ? 'user' as const : 'assistant' as const,
+          content: msgContent,
+          timestamp: msg.timestamp instanceof Date ? msg.timestamp.toISOString() : new Date(msg.timestamp).toISOString()
+        };
+      });
 
       const { message: aiResponse, messages: aiMessages, verdict } = await openAIService.sendMessage(
         conversationHistory,
@@ -307,14 +316,14 @@ export const useChat = () => {
     }
   }, [addMessage, updateMessage]);
 
-  const sendUserMessage = useCallback(async (content: string) => {
+  const sendUserMessage = useCallback(async (content: string, replyTo?: Message['replyTo']) => {
     const currentChatSnapshot = currentChatRef.current;
     if (!currentChatSnapshot || isLoadingRef.current || winDetectedRef.current) return;
 
     const isFirstMessage = currentChatSnapshot.messages.length === 0;
 
-    // Add user message
-    addMessage(content, 'user');
+    // Add user message with replyTo metadata
+    addMessage(content, 'user', false, replyTo);
     hasNudgedRef.current = false; // Reset nudge flag because user replied
     
     // Set loading state and add typing indicator
@@ -328,12 +337,26 @@ export const useChat = () => {
 
     try {
       const conversationHistory = [
-        ...currentChatSnapshot.messages.map(msg => ({
-          role: msg.sender === 'user' ? 'user' as const : 'assistant' as const,
-          content: msg.content,
-          timestamp: msg.timestamp instanceof Date ? msg.timestamp.toISOString() : new Date(msg.timestamp).toISOString()
-        })),
-        { role: 'user' as const, content, timestamp: new Date().toISOString() }
+        ...currentChatSnapshot.messages.map(msg => {
+          let msgContent = msg.content;
+          if (msg.replyTo) {
+            const replySenderLabel = msg.replyTo.sender === 'user' ? 'You' : 'AI';
+            const snippet = msg.replyTo.content.slice(0, 120);
+            msgContent = `[Replying to ${replySenderLabel}: "${snippet}${msg.replyTo.content.length > 120 ? '…' : ''}"]\n${msgContent}`;
+          }
+          return {
+            role: msg.sender === 'user' ? 'user' as const : 'assistant' as const,
+            content: msgContent,
+            timestamp: msg.timestamp instanceof Date ? msg.timestamp.toISOString() : new Date(msg.timestamp).toISOString()
+          };
+        }),
+        {
+          role: 'user' as const,
+          content: replyTo 
+            ? `[Replying to ${replyTo.sender === 'user' ? 'You' : 'AI'}: "${replyTo.content.slice(0, 120)}${replyTo.content.length > 120 ? '…' : ''}"]\n${content}`
+            : content,
+          timestamp: new Date().toISOString()
+        }
       ];
 
       const { message: aiResponse, messages: aiMessages, verdict } = await openAIService.sendMessage(

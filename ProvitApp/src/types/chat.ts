@@ -4,6 +4,10 @@ export interface Message {
   sender: 'user' | 'ai';
   timestamp: Date;
   isTyping?: boolean;
+  replyTo?: {
+    sender: 'user' | 'ai';
+    content: string;
+  };
 }
 
 export type ChatMode = 'convince-ai' | 'prove-human';

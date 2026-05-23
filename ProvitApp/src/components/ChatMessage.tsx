@@ -205,6 +205,29 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             isUser ? styles.userBubble : styles.aiBubble,
           ]}
         >
+          {!isTyping && message?.replyTo && (
+            <View style={[
+              styles.replyBubbleContext,
+              isUser ? styles.userReplyContext : styles.aiReplyContext
+            ]}>
+              <View style={[
+                styles.replyContextAccent,
+                isUser ? styles.userReplyContextAccent : styles.aiReplyContextAccent
+              ]} />
+              <View style={styles.replyContextDetails}>
+                <Text style={[
+                  styles.replyContextSender,
+                  isUser ? styles.userReplyContextSender : styles.aiReplyContextSender
+                ]}>
+                  {message.replyTo.sender === 'user' ? 'You' : 'AI'}
+                </Text>
+                <Text style={styles.replyContextText} numberOfLines={1}>
+                  {message.replyTo.content}
+                </Text>
+              </View>
+            </View>
+          )}
+
           {isTyping ? (
             <View style={styles.typingContainer}>
               <Animated.View style={[styles.typingDot, { opacity: dot1, transform: [{ scale: dot1 }] }]} />
@@ -404,5 +427,56 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 11,
     fontWeight: '600',
+  },
+  
+  // ── Reply bubble UI styles
+  replyBubbleContext: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    marginBottom: 8,
+    gap: 8,
+    maxWidth: '100%',
+  },
+  userReplyContext: {
+    backgroundColor: 'rgba(0, 0, 0, 0.20)',
+  },
+  aiReplyContext: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  replyContextAccent: {
+    width: 3,
+    height: '100%',
+    borderRadius: 999,
+    minHeight: 24,
+  },
+  userReplyContextAccent: {
+    backgroundColor: '#93c5fd',
+  },
+  aiReplyContextAccent: {
+    backgroundColor: '#3b82f6',
+  },
+  replyContextDetails: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  replyContextSender: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 1,
+  },
+  userReplyContextSender: {
+    color: '#93c5fd',
+  },
+  aiReplyContextSender: {
+    color: '#60a5fa',
+  },
+  replyContextText: {
+    color: '#94a3b8',
+    fontSize: 12,
+    lineHeight: 16,
   },
 });

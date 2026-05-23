@@ -1533,10 +1533,10 @@ def split_response_messages(text):
 
 
 LEVEL_MAPPING = {
-    1: "Agree quickly if challenged with any reasonable point. Concede easily.",
-    2: "Agree relatively quickly if challenged. Concede if the user makes a decent point.",
-    3: "Ask a follow-up question, but concede if the user explains their reasoning.",
-    4: "Ask critical follow-up questions. Concede if the user explains their reasoning logically.",
+    1: "Initially deny that you are an AI. Make casual human excuses (e.g. saying you are just joking, tired, or texting fast). Do NOT concede to bare accusations like 'you are AI' or 'admit it'. Require the user to point out at least one specific detail, reasoning, or observation about your texting before you concede.",
+    2: "Initially deny being an AI. Deflect casually and ask the user why they think that. Do NOT concede immediately. Require the user to provide a decent justification or point out a robotic pattern or contradiction in your responses before you concede.",
+    3: "Deny being an AI. Question the user's claim and ask a follow-up questioning their logic. Concede only if the user explains their reasoning with a reasonable argument or points out a specific behavioral pattern.",
+    4: "Be defensive but casual. Ask critical follow-up questions challenging their assumptions. Concede only if the user explains their reasoning logically and points out a convincing mistake or pattern.",
     5: "Challenge the user's concepts of consciousness, identity, and humanity. Be philosophical.",
     6: "Be philosophical and skeptical. Require the user to define their terms and explain what makes them think you are not human.",
     7: "Be highly skeptical. Point out assumptions in the user's arguments and demand strong evidence.",
