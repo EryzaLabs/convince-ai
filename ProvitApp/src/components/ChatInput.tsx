@@ -22,431 +22,1158 @@ import {
   Smile,
   X,
   CornerUpLeft,
+  Pencil,
 } from 'lucide-react-native';
 
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system/legacy';
+
 import EmojiPicker from 'rn-emoji-keyboard';
+
 import { Message } from '../types/chat';
 
 interface ChatInputProps {
   onSendMessage: (
-    message: string, 
+    message: string,
     replyTo?: Message['replyTo'],
-    attachedImage?: { uri: string; base64: string | null }
+    attachedImage?: {
+      uri: string;
+      base64: string | null;
+    }
   ) => void;
+
+  onEditMessage?: (
+    messageId: string,
+    newContent: string
+  ) => void;
+
   isLoading: boolean;
+
   placeholder?: string;
+
   replyTo?: Message | null;
+
+  editingMessage?: Message | null;
+
   onCancelReply?: () => void;
-  onTypingStatusChange?: (isTyping: boolean) => void;
+
+  onCancelEdit?: () => void;
+
+  onTypingStatusChange?: (
+    isTyping: boolean
+  ) => void;
 }
 
-export const ChatInput: React.FC<ChatInputProps> = ({
+export const ChatInput: React.FC<
+  ChatInputProps
+> = ({
   onSendMessage,
+  onEditMessage,
   isLoading,
   placeholder = 'Ask anything...',
   replyTo,
+  editingMessage,
   onCancelReply,
+  onCancelEdit,
   onTypingStatusChange,
 }) => {
-  const [message, setMessage] = useState('');
-  const [emojiOpen, setEmojiOpen] = useState(false);
-  const [attachedImage, setAttachedImage] = useState<{ uri: string; base64: string | null } | null>(null);
+  const [message, setMessage] =
+    useState('');
 
-  const inputRef = useRef<TextInput>(null);
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const [emojiOpen, setEmojiOpen] =
+    useState(false);
 
-  // Reply bar slide-in animation
-  const replyBarHeight = useRef(new Animated.Value(0)).current;
-  const replyBarOpacity = useRef(new Animated.Value(0)).current;
+  const [
+    attachedImage,
+    setAttachedImage,
+  ] = useState<{
+    uri: string;
+    base64: string | null;
+  } | null>(null);
+
+  const inputRef =
+    useRef<TextInput>(null);
+
+  const scaleAnim =
+    useRef(
+      new Animated.Value(1)
+    ).current;
+
+  // ─────────────────────────────
+  // REPLY BAR
+  // ─────────────────────────────
+
+  const replyBarHeight =
+    useRef(
+      new Animated.Value(0)
+    ).current;
+
+  const replyBarOpacity =
+    useRef(
+      new Animated.Value(0)
+    ).current;
+
+  // ─────────────────────────────
+  // PREFILL EDIT
+  // ─────────────────────────────
+
+  useEffect(() => {
+    if (
+      editingMessage
+    ) {
+      setMessage(
+        editingMessage.content
+      );
+
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+      });
+    }
+  }, [editingMessage]);
+
+  // ─────────────────────────────
+  // REPLY ANIMATION
+  // ─────────────────────────────
 
   useEffect(() => {
     if (replyTo) {
       Animated.parallel([
-        Animated.spring(replyBarHeight, { toValue: 52, tension: 80, friction: 10, useNativeDriver: false }),
-        Animated.timing(replyBarOpacity, { toValue: 1, duration: 200, useNativeDriver: false }),
+        Animated.spring(
+          replyBarHeight,
+          {
+            toValue: 52,
+            tension: 80,
+            friction: 10,
+            useNativeDriver: false,
+          }
+        ),
+
+        Animated.timing(
+          replyBarOpacity,
+          {
+            toValue: 1,
+            duration: 200,
+            useNativeDriver: false,
+          }
+        ),
       ]).start();
-      // Focus input when reply starts
-      setTimeout(() => inputRef.current?.focus(), 100);
+
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     } else {
       Animated.parallel([
-        Animated.timing(replyBarHeight, { toValue: 0, duration: 180, useNativeDriver: false }),
-        Animated.timing(replyBarOpacity, { toValue: 0, duration: 180, useNativeDriver: false }),
+        Animated.timing(
+          replyBarHeight,
+          {
+            toValue: 0,
+            duration: 180,
+            useNativeDriver: false,
+          }
+        ),
+
+        Animated.timing(
+          replyBarOpacity,
+          {
+            toValue: 0,
+            duration: 180,
+            useNativeDriver: false,
+          }
+        ),
       ]).start();
     }
   }, [replyTo]);
 
+  // ─────────────────────────────
+  // TYPING STATE
+  // ─────────────────────────────
+
   useEffect(() => {
-    onTypingStatusChange?.(message.trim().length > 0);
-  }, [message, onTypingStatusChange]);
+    onTypingStatusChange?.(
+      message.trim()
+        .length > 0
+    );
+  }, [
+    message,
+    onTypingStatusChange,
+  ]);
 
-  const canSend = message.trim().length > 0 || attachedImage !== null;
+  const canSend =
+    message.trim()
+      .length > 0 ||
+    attachedImage !==
+      null;
 
-  const handleSelectImage = async (shouldCrop: boolean | any = false) => {
-    try {
-      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permissionResult.granted) {
-        alert("Permission to access media library is required to attach images!");
+  // ─────────────────────────────
+  // IMAGE PICKER
+  // ─────────────────────────────
+
+  const handleSelectImage =
+    async (
+      shouldCrop:
+        | boolean
+        | any = false
+    ) => {
+      if (
+        editingMessage
+      )
+        return;
+
+      try {
+        const permissionResult =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+        if (
+          !permissionResult.granted
+        ) {
+          alert(
+            'Permission required to access images.'
+          );
+
+          return;
+        }
+
+        const result =
+          await ImagePicker.launchImageLibraryAsync(
+            {
+              mediaTypes: [
+                'images',
+              ],
+
+              allowsEditing:
+                typeof shouldCrop ===
+                'boolean'
+                  ? shouldCrop
+                  : false,
+
+              quality: 0.7,
+
+              base64: true,
+            }
+          );
+
+        if (
+          !result.canceled &&
+          result.assets &&
+          result.assets
+            .length > 0
+        ) {
+          const asset =
+            result.assets[0];
+
+          let base64Str =
+            asset.base64 ||
+            null;
+
+          if (
+            !base64Str
+          ) {
+            try {
+              base64Str =
+                await FileSystem.readAsStringAsync(
+                  asset.uri,
+                  {
+                    encoding:
+                      FileSystem.EncodingType.Base64,
+                  }
+                );
+            } catch (
+              readErr
+            ) {
+              console.error(
+                'Failed to read image',
+                readErr
+              );
+            }
+          }
+
+          setAttachedImage(
+            {
+              uri: asset.uri,
+
+              base64:
+                base64Str
+                  ? `data:image/jpeg;base64,${base64Str}`
+                  : null,
+            }
+          );
+        }
+      } catch (err) {
+        console.error(
+          'Image picker error',
+          err
+        );
+      }
+    };
+
+  // ─────────────────────────────
+  // BUTTON ANIMATION
+  // ─────────────────────────────
+
+  const animateButton =
+    () => {
+      Animated.sequence([
+        Animated.timing(
+          scaleAnim,
+          {
+            toValue: 0.92,
+            duration: 70,
+            useNativeDriver: true,
+          }
+        ),
+
+        Animated.timing(
+          scaleAnim,
+          {
+            toValue: 1,
+            duration: 70,
+            useNativeDriver: true,
+          }
+        ),
+      ]).start();
+    };
+
+  // ─────────────────────────────
+  // SEND / EDIT
+  // ─────────────────────────────
+
+  const handleSend =
+    () => {
+      if (
+        !canSend ||
+        isLoading
+      )
+        return;
+
+      const trimmed =
+        message.trim();
+
+      // EDIT MODE
+
+      if (
+        editingMessage &&
+        onEditMessage
+      ) {
+        onEditMessage(
+          editingMessage.id,
+          trimmed
+        );
+
+        setMessage('');
+
+        onCancelEdit?.();
+
         return;
       }
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: typeof shouldCrop === 'boolean' ? shouldCrop : false,
-        quality: 0.7,
-        base64: true,
-      });
+      // NORMAL SEND
 
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        const asset = result.assets[0];
-        let base64Str = asset.base64 || null;
-        
-        // If base64 is missing, read it manually
-        if (!base64Str) {
-          try {
-            base64Str = await FileSystem.readAsStringAsync(asset.uri, {
-              encoding: FileSystem.EncodingType.Base64,
-            });
-          } catch (readErr) {
-            console.error("Failed to read image as base64", readErr);
-          }
-        }
+      onSendMessage(
+        trimmed,
 
-        setAttachedImage({
-          uri: asset.uri,
-          base64: base64Str ? `data:image/jpeg;base64,${base64Str}` : null,
-        });
-      }
-    } catch (err) {
-      console.error("Error launching image picker", err);
-    }
-  };
+        replyTo
+          ? {
+              sender:
+                replyTo.sender,
 
-  const animateButton = () => {
-    Animated.sequence([
-      Animated.timing(scaleAnim, { toValue: 0.92, duration: 70, useNativeDriver: true }),
-      Animated.timing(scaleAnim, { toValue: 1, duration: 70, useNativeDriver: true }),
-    ]).start();
-  };
+              content:
+                replyTo.content,
+            }
+          : undefined,
 
-  const handleSend = () => {
-    if (!canSend && !attachedImage) return;
-    if (isLoading) return;
+        attachedImage ||
+          undefined
+      );
 
-    const finalMessage = message.trim();
-    let replyMetadata: Message['replyTo'] | undefined = undefined;
+      setMessage('');
 
-    if (replyTo) {
-      replyMetadata = {
-        sender: replyTo.sender,
-        content: replyTo.content
-      };
+      setAttachedImage(
+        null
+      );
+
       onCancelReply?.();
-    }
 
-    onSendMessage(finalMessage, replyMetadata, attachedImage || undefined);
-    setMessage('');
-    setAttachedImage(null);
+      requestAnimationFrame(
+        () => {
+          inputRef.current?.focus();
+        }
+      );
+    };
 
-    requestAnimationFrame(() => {
-      inputRef.current?.focus();
-    });
-  };
+  const senderLabel =
+    replyTo?.sender ===
+    'user'
+      ? 'You'
+      : 'AI';
 
-  const senderLabel = replyTo?.sender === 'user' ? 'You' : 'AI';
-  const replySnippet = replyTo?.content?.slice(0, 80) ?? '';
+  const replySnippet =
+    replyTo?.content?.slice(
+      0,
+      80
+    ) ?? '';
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={10}
+      behavior={
+        Platform.OS ===
+        'ios'
+          ? 'padding'
+          : undefined
+      }
+      keyboardVerticalOffset={
+        10
+      }
     >
-      <View style={styles.wrapper}>
+      <View
+        style={
+          styles.wrapper
+        }
+      >
+        {/* EDIT BAR */}
 
-        {/* ── Reply preview bar ──────────────────────────── */}
-        <Animated.View
-          style={[
-            styles.replyBar,
-            { height: replyBarHeight, opacity: replyBarOpacity },
-          ]}
-        >
-          <View style={styles.replyBarInner}>
-            <View style={styles.replyBarAccent} />
+        {editingMessage && (
+          <View
+            style={
+              styles.editBar
+            }
+          >
+            <View
+              style={
+                styles.editAccent
+              }
+            />
 
-            <View style={styles.replyBarContent}>
-              <View style={styles.replyBarHeader}>
-                <CornerUpLeft size={11} color="#60a5fa" />
-                <Text style={styles.replyBarSender}>{senderLabel}</Text>
+            <View
+              style={{
+                flex: 1,
+              }}
+            >
+              <View
+                style={
+                  styles.editHeader
+                }
+              >
+                <Pencil
+                  size={12}
+                  color="#facc15"
+                />
+
+                <Text
+                  style={
+                    styles.editTitle
+                  }
+                >
+                  Editing
+                  message
+                </Text>
               </View>
-              <Text style={styles.replyBarText} numberOfLines={1}>
-                {replySnippet}
+
+              <Text
+                numberOfLines={
+                  1
+                }
+                style={
+                  styles.editPreview
+                }
+              >
+                {
+                  editingMessage.content
+                }
               </Text>
             </View>
 
             <TouchableOpacity
-              onPress={onCancelReply}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              style={styles.replyBarClose}
+              onPress={() => {
+                setMessage(
+                  ''
+                );
+
+                onCancelEdit?.();
+              }}
+              style={
+                styles.editCloseButton
+              }
             >
-              <X size={14} color="#64748b" />
+              <X
+                size={15}
+                color="#94a3b8"
+              />
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* REPLY BAR */}
+
+        <Animated.View
+          style={[
+            styles.replyBar,
+
+            {
+              height:
+                replyBarHeight,
+
+              opacity:
+                replyBarOpacity,
+            },
+          ]}
+        >
+          <View
+            style={
+              styles.replyBarInner
+            }
+          >
+            <View
+              style={
+                styles.replyBarAccent
+              }
+            />
+
+            <View
+              style={
+                styles.replyBarContent
+              }
+            >
+              <View
+                style={
+                  styles.replyBarHeader
+                }
+              >
+                <CornerUpLeft
+                  size={11}
+                  color="#60a5fa"
+                />
+
+                <Text
+                  style={
+                    styles.replyBarSender
+                  }
+                >
+                  {
+                    senderLabel
+                  }
+                </Text>
+              </View>
+
+              <Text
+                style={
+                  styles.replyBarText
+                }
+                numberOfLines={
+                  1
+                }
+              >
+                {
+                  replySnippet
+                }
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={
+                onCancelReply
+              }
+              hitSlop={{
+                top: 8,
+                bottom: 8,
+                left: 8,
+                right: 8,
+              }}
+              style={
+                styles.replyBarClose
+              }
+            >
+              <X
+                size={14}
+                color="#64748b"
+              />
             </TouchableOpacity>
           </View>
         </Animated.View>
 
-        {/* ── Image attachment preview bar ──────────────────────────── */}
+        {/* IMAGE PREVIEW */}
+
         {attachedImage && (
-          <View style={styles.imagePreviewBar}>
+          <View
+            style={
+              styles.imagePreviewBar
+            }
+          >
             <TouchableOpacity
-                style={styles.imagePreviewWrapper}
-                activeOpacity={0.85}
-                onPress={() => handleSelectImage(true)}
-              >
-              <Image source={{ uri: attachedImage.uri }} style={styles.imagePreview} />
-              <TouchableOpacity
-                onPress={(e) => {
-                  e.stopPropagation();
-                  setAttachedImage(null);
+              style={
+                styles.imagePreviewWrapper
+              }
+              activeOpacity={
+                0.85
+              }
+              onPress={() =>
+                handleSelectImage(
+                  true
+                )
+              }
+            >
+              <Image
+                source={{
+                  uri: attachedImage.uri,
                 }}
-                style={styles.removeImageButton}
-                activeOpacity={0.8}
+                style={
+                  styles.imagePreview
+                }
+              />
+
+              <TouchableOpacity
+                onPress={e => {
+                  e.stopPropagation();
+
+                  setAttachedImage(
+                    null
+                  );
+                }}
+                style={
+                  styles.removeImageButton
+                }
+                activeOpacity={
+                  0.8
+                }
               >
-                <X size={12} color="#ffffff" />
+                <X
+                  size={12}
+                  color="#ffffff"
+                />
               </TouchableOpacity>
             </TouchableOpacity>
           </View>
         )}
 
-        {/* ── Input row ─────────────────────────────────── */}
-        <View style={styles.container}>
-          {/* Attachment */}
-          <TouchableOpacity 
-            style={styles.iconButton}
-            onPress={() => handleSelectImage(false)}
+        {/* INPUT */}
+
+        <View
+          style={
+            styles.container
+          }
+        >
+          {/* IMAGE */}
+
+          <TouchableOpacity
+            style={[
+              styles.iconButton,
+
+              editingMessage && {
+                opacity: 0.4,
+              },
+            ]}
+            disabled={
+              !!editingMessage
+            }
+            onPress={() =>
+              handleSelectImage(
+                false
+              )
+            }
           >
-            <Paperclip size={20} color={attachedImage ? "#3b82f6" : "#94a3b8"} />
+            <Paperclip
+              size={20}
+              color={
+                attachedImage
+                  ? '#3b82f6'
+                  : '#94a3b8'
+              }
+            />
           </TouchableOpacity>
 
-          {/* Input */}
+          {/* INPUT */}
+
           <TextInput
             ref={inputRef}
             value={message}
-            onChangeText={setMessage}
-            placeholder={placeholder}
+            onChangeText={
+              setMessage
+            }
+            placeholder={
+              placeholder
+            }
             placeholderTextColor="#64748b"
             multiline
             maxLength={1200}
-            style={styles.input}
-            blurOnSubmit={false}
+            style={
+              styles.input
+            }
+            blurOnSubmit={
+              false
+            }
             returnKeyType="send"
-            onSubmitEditing={handleSend}
+            onSubmitEditing={
+              handleSend
+            }
           />
 
-          {/* Emoji */}
+          {/* EMOJI */}
+
           <TouchableOpacity
-            style={styles.iconButton}
-            onPress={() => setEmojiOpen(true)}
+            style={
+              styles.iconButton
+            }
+            onPress={() =>
+              setEmojiOpen(
+                true
+              )
+            }
           >
-            <Smile size={20} color="#94a3b8" />
+            <Smile
+              size={20}
+              color="#94a3b8"
+            />
           </TouchableOpacity>
 
-          {/* Send */}
-          <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
+          {/* SEND */}
+
+          <Animated.View
+            style={{
+              transform: [
+                {
+                  scale:
+                    scaleAnim,
+                },
+              ],
+            }}
+          >
             <TouchableOpacity
-              activeOpacity={0.85}
-              disabled={!canSend || isLoading}
-              onPress={() => { animateButton(); handleSend(); }}
+              activeOpacity={
+                0.85
+              }
+              disabled={
+                !canSend ||
+                isLoading
+              }
+              onPress={() => {
+                animateButton();
+
+                handleSend();
+              }}
               style={[
                 styles.sendButton,
-                (!canSend || isLoading) && styles.sendButtonDisabled,
+
+                (
+                  !canSend ||
+                  isLoading
+                ) &&
+                  styles.sendButtonDisabled,
               ]}
             >
-              <SendHorizonal size={18} color="#ffffff" />
+              {editingMessage ? (
+                <Pencil
+                  size={18}
+                  color="#ffffff"
+                />
+              ) : (
+                <SendHorizonal
+                  size={18}
+                  color="#ffffff"
+                />
+              )}
             </TouchableOpacity>
           </Animated.View>
         </View>
 
-        {/* Footer */}
-        <View style={styles.footer}>
-          <Text style={styles.counter}>{message.length}/1200</Text>
-          {isLoading && <Text style={styles.processing}>Thinking...</Text>}
+        {/* FOOTER */}
+
+        <View
+          style={
+            styles.footer
+          }
+        >
+          <Text
+            style={
+              styles.counter
+            }
+          >
+            {
+              message.length
+            }
+            /1200
+          </Text>
+
+          {isLoading && (
+            <Text
+              style={
+                styles.processing
+              }
+            >
+              Thinking...
+            </Text>
+          )}
         </View>
       </View>
 
-      {/* Emoji Picker */}
+      {/* EMOJI PICKER */}
+
       <EmojiPicker
         open={emojiOpen}
-        onClose={() => setEmojiOpen(false)}
+        onClose={() =>
+          setEmojiOpen(
+            false
+          )
+        }
         onEmojiSelected={emoji => {
-          setMessage(prev => prev + emoji.emoji);
-          requestAnimationFrame(() => inputRef.current?.focus());
+          setMessage(
+            prev =>
+              prev +
+              emoji.emoji
+          );
+
+          requestAnimationFrame(
+            () => {
+              inputRef.current?.focus();
+            }
+          );
         }}
       />
     </KeyboardAvoidingView>
   );
 };
 
-const styles = StyleSheet.create({
-  wrapper: {
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 14,
-    backgroundColor: '#020617',
-    borderTopWidth: 1,
-    borderTopColor: '#111827',
-  },
+const styles =
+  StyleSheet.create({
+    wrapper: {
+      paddingHorizontal: 14,
+      paddingTop: 10,
+      paddingBottom: 14,
 
-  // ── Reply bar
-  replyBar: {
-    overflow: 'hidden',
-    marginBottom: 6,
-  },
+      backgroundColor:
+        '#020617',
 
-  replyBarInner: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0f172a',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#1e3a8a',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    gap: 10,
-  },
+      borderTopWidth: 1,
 
-  replyBarAccent: {
-    width: 3,
-    height: '100%',
-    borderRadius: 999,
-    backgroundColor: '#2563eb',
-    minHeight: 28,
-  },
+      borderTopColor:
+        '#111827',
+    },
 
-  replyBarContent: {
-    flex: 1,
-  },
+    // ─────────────────────────────
+    // EDIT BAR
+    // ─────────────────────────────
 
-  replyBarHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    marginBottom: 2,
-  },
+    editBar: {
+      flexDirection: 'row',
 
-  replyBarSender: {
-    color: '#60a5fa',
-    fontSize: 11,
-    fontWeight: '700',
-  },
+      alignItems: 'center',
 
-  replyBarText: {
-    color: '#94a3b8',
-    fontSize: 12,
-    lineHeight: 16,
-  },
+      backgroundColor:
+        '#111827',
 
-  replyBarClose: {
-    padding: 2,
-  },
+      borderWidth: 1,
 
-  // ── Input row
-  container: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    backgroundColor: '#0f172a',
-    borderWidth: 1,
-    borderColor: '#1e293b',
-    borderRadius: 26,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    minHeight: 58,
-  },
+      borderColor:
+        '#374151',
 
-  input: {
-    flex: 1,
-    color: '#ffffff',
-    fontSize: 16,
-    lineHeight: 22,
-    maxHeight: 140,
-    paddingHorizontal: 10,
-    paddingTop: 10,
-    paddingBottom: 10,
-  },
+      borderRadius: 14,
 
-  iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+      paddingHorizontal: 12,
 
-  sendButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 999,
-    backgroundColor: '#2563eb',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
+      paddingVertical: 10,
 
-  sendButtonDisabled: {
-    opacity: 0.4,
-  },
+      marginBottom: 8,
 
-  footer: {
-    marginTop: 8,
-    paddingHorizontal: 4,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
+      gap: 10,
+    },
 
-  counter: {
-    color: '#64748b',
-    fontSize: 11,
-  },
+    editAccent: {
+      width: 3,
 
-  processing: {
-    color: '#94a3b8',
-    fontSize: 11,
-  },
+      alignSelf: 'stretch',
 
-  // ── Image attachment preview styles
-  imagePreviewBar: {
-    flexDirection: 'row',
-    marginBottom: 8,
-    paddingLeft: 4,
-  },
-  imagePreviewWrapper: {
-    position: 'relative',
-    width: 66,
-    height: 66,
-  },
-  imagePreview: {
-    width: 60,
-    height: 60,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  removeImageButton: {
-    position: 'absolute',
-    top: -4,
-    right: 2,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#ef4444',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#0f172a',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.5,
-    elevation: 2,
-  },
-});
+      borderRadius: 999,
+
+      backgroundColor:
+        '#facc15',
+    },
+
+    editHeader: {
+      flexDirection: 'row',
+
+      alignItems: 'center',
+
+      gap: 6,
+
+      marginBottom: 2,
+    },
+
+    editTitle: {
+      color: '#facc15',
+
+      fontSize: 12,
+
+      fontWeight: '700',
+    },
+
+    editPreview: {
+      color: '#94a3b8',
+
+      fontSize: 12,
+    },
+
+    editCloseButton: {
+      width: 24,
+      height: 24,
+
+      borderRadius: 999,
+
+      alignItems: 'center',
+
+      justifyContent:
+        'center',
+    },
+
+    // ─────────────────────────────
+    // REPLY BAR
+    // ─────────────────────────────
+
+    replyBar: {
+      overflow: 'hidden',
+
+      marginBottom: 6,
+    },
+
+    replyBarInner: {
+      flex: 1,
+
+      flexDirection: 'row',
+
+      alignItems: 'center',
+
+      backgroundColor:
+        '#0f172a',
+
+      borderRadius: 14,
+
+      borderWidth: 1,
+
+      borderColor:
+        '#1e3a8a',
+
+      paddingHorizontal: 10,
+
+      paddingVertical: 8,
+
+      gap: 10,
+    },
+
+    replyBarAccent: {
+      width: 3,
+
+      height: '100%',
+
+      borderRadius: 999,
+
+      backgroundColor:
+        '#2563eb',
+
+      minHeight: 28,
+    },
+
+    replyBarContent: {
+      flex: 1,
+    },
+
+    replyBarHeader: {
+      flexDirection: 'row',
+
+      alignItems: 'center',
+
+      gap: 5,
+
+      marginBottom: 2,
+    },
+
+    replyBarSender: {
+      color: '#60a5fa',
+
+      fontSize: 11,
+
+      fontWeight: '700',
+    },
+
+    replyBarText: {
+      color: '#94a3b8',
+
+      fontSize: 12,
+
+      lineHeight: 16,
+    },
+
+    replyBarClose: {
+      padding: 2,
+    },
+
+    // ─────────────────────────────
+    // INPUT
+    // ─────────────────────────────
+
+    container: {
+      flexDirection: 'row',
+
+      alignItems: 'flex-end',
+
+      backgroundColor:
+        '#0f172a',
+
+      borderWidth: 1,
+
+      borderColor:
+        '#1e293b',
+
+      borderRadius: 26,
+
+      paddingHorizontal: 8,
+
+      paddingVertical: 8,
+
+      minHeight: 58,
+    },
+
+    input: {
+      flex: 1,
+
+      color: '#ffffff',
+
+      fontSize: 16,
+
+      lineHeight: 22,
+
+      maxHeight: 140,
+
+      paddingHorizontal: 10,
+
+      paddingTop: 10,
+
+      paddingBottom: 10,
+    },
+
+    iconButton: {
+      width: 38,
+      height: 38,
+
+      borderRadius: 999,
+
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+    },
+
+    sendButton: {
+      width: 42,
+      height: 42,
+
+      borderRadius: 999,
+
+      backgroundColor:
+        '#2563eb',
+
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+    },
+
+    sendButtonDisabled: {
+      opacity: 0.4,
+    },
+
+    footer: {
+      marginTop: 8,
+
+      paddingHorizontal: 4,
+
+      flexDirection: 'row',
+
+      justifyContent:
+        'space-between',
+
+      alignItems:
+        'center',
+    },
+
+    counter: {
+      color: '#64748b',
+
+      fontSize: 11,
+    },
+
+    processing: {
+      color: '#94a3b8',
+
+      fontSize: 11,
+    },
+
+    // ─────────────────────────────
+    // IMAGE PREVIEW
+    // ─────────────────────────────
+
+    imagePreviewBar: {
+      flexDirection: 'row',
+
+      marginBottom: 8,
+
+      paddingLeft: 4,
+    },
+
+    imagePreviewWrapper: {
+      position: 'relative',
+
+      width: 66,
+      height: 66,
+    },
+
+    imagePreview: {
+      width: 60,
+      height: 60,
+
+      borderRadius: 10,
+
+      borderWidth: 1,
+
+      borderColor:
+        '#334155',
+    },
+
+    removeImageButton: {
+      position: 'absolute',
+
+      top: -4,
+      right: 2,
+
+      width: 18,
+      height: 18,
+
+      borderRadius: 9,
+
+      backgroundColor:
+        '#ef4444',
+
+      alignItems:
+        'center',
+
+      justifyContent:
+        'center',
+
+      borderWidth: 1,
+
+      borderColor:
+        '#0f172a',
+
+      shadowColor:
+        '#000',
+
+      shadowOffset: {
+        width: 0,
+        height: 1,
+      },
+
+      shadowOpacity: 0.2,
+
+      shadowRadius: 1.5,
+
+      elevation: 2,
+    },
+  });

@@ -3,12 +3,25 @@ export interface Message {
   content: string;
   sender: 'user' | 'ai';
   timestamp: Date;
+
   isTyping?: boolean;
+
   replyTo?: {
     sender: 'user' | 'ai';
     content: string;
   };
+
   imageUri?: string;
+
+  // NEW
+  edited?: boolean;
+
+  editedAt?: Date;
+
+  editHistory?: {
+    previousContent: string;
+    editedAt: Date;
+  }[];
 }
 
 export type ChatMode = 'convince-ai' | 'prove-human';

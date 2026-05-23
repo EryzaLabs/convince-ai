@@ -180,6 +180,12 @@ function App() {
                 onSendMessage={sendUserMessage}
                 isLoading={isLoading}
                 mode={currentChat.mode}
+                onEditMessage={
+                  editMessage
+                }
+                onDeleteMessage={
+                  deleteMessage
+                }
               />
             </div>
           </>

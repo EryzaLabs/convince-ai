@@ -73,6 +73,8 @@ function AppContent() {
     selectChat,
     deleteChat,
     sendUserMessage,
+    editMessage,
+    deleteMessage,
     updateChatSettings,
     dismissWin,
     setInputHasText,
@@ -246,6 +248,8 @@ function AppContent() {
             <ChatContainer
               messages={currentChat.messages}
               onSendMessage={sendUserMessage}
+              onEditMessage={editMessage}
+              onDeleteMessage={deleteMessage}
               isLoading={isLoading}
               mode={currentChat.mode}
               roastLevel={currentChat.roastLevel}

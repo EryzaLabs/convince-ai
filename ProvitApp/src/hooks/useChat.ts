@@ -193,6 +193,193 @@ export const useChat = () => {
     });
   }, []);
 
+  const editMessage = useCallback(async (
+    messageId: string,
+    newContent: string
+  ) => {
+    const now = new Date();
+    setState(prev => {
+      if (!prev.currentChat) return prev;
+
+      const updatedMessages =
+        prev.currentChat.messages.map(msg => {
+          if (msg.id !== messageId)
+            return msg;
+
+          return {
+            ...msg,
+            content: newContent,
+            edited: true,
+            editedAt: now,
+            editHistory: [
+              ...(msg.editHistory || []),
+              {
+                previousContent: msg.content,
+                editedAt: now,
+              },
+            ],
+          };
+        });
+
+      const updatedChat = {
+        ...prev.currentChat,
+        messages: updatedMessages,
+        updatedAt: now,
+      };
+
+      const updatedHistory =
+        prev.chatHistory.map(chat =>
+          chat.id === updatedChat.id
+            ? updatedChat
+            : chat
+        );
+
+      return {
+        ...prev,
+        currentChat: updatedChat,
+        chatHistory: updatedHistory,
+      };
+    });
+
+    const currentChatSnapshot = currentChatRef.current;
+    if (!currentChatSnapshot || isLoadingRef.current || winDetectedRef.current) return;
+
+    const userMessages = currentChatSnapshot.messages.filter(m => m.sender === 'user');
+    const isLastUserMessage = userMessages.length > 0 && userMessages[userMessages.length - 1].id === messageId;
+
+    if (!isLastUserMessage) {
+      return;
+    }
+
+    setState(prev => ({ ...prev, isLoading: true }));
+    const typingId = addMessage('', 'ai', true);
+
+    try {
+      const conversationHistory = currentChatSnapshot.messages.map(msg => {
+        let msgContent = msg.id === messageId ? newContent : msg.content;
+        
+        if (msg.id === messageId) {
+          const prevContent = msg.content;
+          msgContent = `[User edited this message after it was already sent. Previous version: "${prevContent}"]\n${newContent}`;
+        } else if (msg.sender === 'user' && msg.edited && msg.editedAt) {
+          const editAge = now.getTime() - new Date(msg.editedAt).getTime();
+          const RECENT_EDIT_WINDOW = 1000 * 60 * 2; // 2 mins
+          if (editAge < RECENT_EDIT_WINDOW) {
+            msgContent = `[User edited this message after it was already sent. Previous version: "${msg.editHistory?.slice(-1)[0]?.previousContent || ''}"]\n${msgContent}`;
+          }
+        }
+
+        if (msg.replyTo) {
+          const replySenderLabel = msg.replyTo.sender === 'user' ? 'You' : 'AI';
+          const snippet = msg.replyTo.content.slice(0, 120);
+          msgContent = `[Replying to ${replySenderLabel}: "${snippet}${msg.replyTo.content.length > 120 ? '…' : ''}"]\n${msgContent}`;
+        }
+
+        return {
+          role: msg.sender === 'user' ? 'user' as const : 'assistant' as const,
+          content: msgContent,
+          timestamp: msg.timestamp instanceof Date ? msg.timestamp.toISOString() : new Date(msg.timestamp).toISOString()
+        };
+      });
+
+      conversationHistory.push({
+        role: 'user' as const,
+        content: `[SYSTEM NOTE: The user just edited their last message. You noticed this edit. Acknowledge that you already read the original message before I edited it, and express it in your character/roast level. Then respond to the new edited content.]`,
+        timestamp: new Date().toISOString()
+      });
+
+      const { message: aiResponse, messages: aiMessages, verdict } = await openAIService.sendMessage(
+        conversationHistory, 
+        currentChatSnapshot.mode, 
+        currentChatSnapshot.roastLevel,
+        currentChatSnapshot.level,
+        undefined,
+        undefined
+      );
+      
+      const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+      if (aiMessages && aiMessages.length > 0) {
+        updateMessage(typingId, aiMessages[0], false);
+        for (let i = 1; i < aiMessages.length; i++) {
+          const typingDuration = Math.min(Math.max(aiMessages[i].length * 35, 800), 2000);
+          setState(prev => ({ ...prev, isLoading: true }));
+          await sleep(typingDuration);
+          setState(prev => ({ ...prev, isLoading: false }));
+          addMessage(aiMessages[i], 'ai');
+        }
+      } else {
+        updateMessage(typingId, aiResponse, false);
+      }
+
+      const won = detectWin(aiResponse, currentChatSnapshot.mode, currentChatSnapshot.level, verdict);
+      if (won) {
+        const userMsgCount = currentChatSnapshot.messages.filter(m => m.sender === 'user').length;
+        const stars = calcStars(userMsgCount);
+        setState(prev => {
+          if (!prev.currentChat) return prev;
+          const completedChat = { ...prev.currentChat, levelCompleted: true };
+          const updatedHistory = prev.chatHistory.map(c =>
+            c.id === completedChat.id ? completedChat : c
+          );
+          return {
+            ...prev,
+            currentChat: completedChat,
+            chatHistory: updatedHistory,
+            winDetected: true,
+            winStars: stars,
+          };
+        });
+      }
+    } catch (error) {
+      console.error('Edit Chat Error:', error);
+      updateMessage(typingId, "I was about to roast your edited message, but something went wrong on my end.", false);
+    } finally {
+      setState(prev => ({ ...prev, isLoading: false }));
+    }
+  }, [addMessage, updateMessage]);
+
+const deleteMessage = useCallback((
+  messageId: string
+) => {
+  setState(prev => {
+    if (!prev.currentChat)
+      return prev;
+
+    const updatedMessages =
+      prev.currentChat.messages.filter(
+        msg => msg.id !== messageId
+      );
+
+    const updatedChat = {
+      ...prev.currentChat,
+
+      messages:
+        updatedMessages,
+
+      updatedAt:
+        new Date(),
+    };
+
+    const updatedHistory =
+      prev.chatHistory.map(chat =>
+        chat.id === updatedChat.id
+          ? updatedChat
+          : chat
+      );
+
+    return {
+      ...prev,
+
+      currentChat:
+        updatedChat,
+
+      chatHistory:
+        updatedHistory,
+    };
+  });
+}, []);
+
   const updateChatName = useCallback(async (chatId: string, firstMessage: string, mode: ChatMode) => {
     try {
       const generatedName = await openAIService.generateChatName(firstMessage, mode);
@@ -365,28 +552,64 @@ export const useChat = () => {
     }
 
     try {
-      const conversationHistory = [
-        ...currentChatSnapshot.messages.map(msg => {
-          let msgContent = msg.content;
-          if (msg.replyTo) {
-            const replySenderLabel = msg.replyTo.sender === 'user' ? 'You' : 'AI';
-            const snippet = msg.replyTo.content.slice(0, 120);
-            msgContent = `[Replying to ${replySenderLabel}: "${snippet}${msg.replyTo.content.length > 120 ? '…' : ''}"]\n${msgContent}`;
-          }
-          return {
-            role: msg.sender === 'user' ? 'user' as const : 'assistant' as const,
-            content: msgContent,
-            timestamp: msg.timestamp instanceof Date ? msg.timestamp.toISOString() : new Date(msg.timestamp).toISOString()
-          };
-        }),
-        {
-          role: 'user' as const,
-          content: replyTo 
-            ? `[Replying to ${replyTo.sender === 'user' ? 'You' : 'AI'}: "${replyTo.content.slice(0, 120)}${replyTo.content.length > 120 ? '…' : ''}"]\n${content}`
-            : content,
-          timestamp: new Date().toISOString()
-        }
-      ];
+      const conversationHistory =
+  currentChatSnapshot.messages.map(msg => {
+    let msgContent =
+      msg.content;
+
+    // REPLY CONTEXT
+    if (msg.replyTo) {
+      const replySender =
+        msg.replyTo.sender === 'user'
+          ? 'You'
+          : 'AI';
+
+      msgContent =
+        `[Replying to ${replySender}: "${msg.replyTo.content}"]\n${msgContent}`;
+    }
+
+    // EDIT CONTEXT
+    if (
+      msg.edited &&
+      msg.editedAt
+    ) {
+      const editAge =
+        Date.now() -
+        new Date(
+          msg.editedAt
+        ).getTime();
+
+      const RECENT_EDIT_WINDOW =
+        1000 * 60 * 2;
+
+      // 2 mins
+
+      if (
+        editAge <
+        RECENT_EDIT_WINDOW
+      ) {
+        msgContent =
+          `[User edited this message after it was already sent. Previous version: "${msg.editHistory?.slice(-1)[0]?.previousContent || ''}"]\n${msgContent}`;
+      }
+    }
+
+    return {
+      role:
+        msg.sender === 'user'
+          ? 'user'
+          : 'assistant',
+
+      content:
+        msgContent,
+
+      timestamp:
+        msg.timestamp instanceof Date
+          ? msg.timestamp.toISOString()
+          : new Date(
+              msg.timestamp
+            ).toISOString(),
+    };
+  });
 
       const { message: aiResponse, messages: aiMessages, verdict } = await openAIService.sendMessage(
         conversationHistory, 
@@ -550,5 +773,7 @@ export const useChat = () => {
     dismissWin,
     // Typing status setter
     setInputHasText,
+    editMessage,
+    deleteMessage,
   };
 };
