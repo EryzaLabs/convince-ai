@@ -1256,16 +1256,17 @@ class AsyncRequestProcessor:
         self.running = True
         logger.info("Async request processor initialized")
 
-    async def process_request_async(self, messages, mode, roast_level, level, future_result):
+    async def process_request_async(self, messages, mode, roast_level, level, user_state, future_result):
         try:
             async with self.semaphore:
-                cache_key = get_cache_key(messages, mode, roast_level, level)
+                cache_key = get_cache_key(messages, mode, roast_level, level, user_state)
                 if ENABLE_LANGCHAIN_TOOLS:
                     should_bypass_cache = True
                 else:
                     is_time_sensitive = _is_time_sensitive_query(messages)
                     should_use_web = _should_enrich_with_web(messages)
-                    should_bypass_cache = is_time_sensitive or should_use_web
+                    is_nudge = messages and messages[-1].get('role') == 'assistant'
+                    should_bypass_cache = is_time_sensitive or should_use_web or is_nudge
                 if not should_bypass_cache and cache_key in response_cache:
                     cached_response, timestamp = response_cache[cache_key]
                     if is_cache_valid(timestamp):
@@ -1273,8 +1274,9 @@ class AsyncRequestProcessor:
                         future_result.put(('success', cached_response))
                         return
 
-                system_prompt = get_system_prompt(mode, roast_level, level)
-                conversation = [{"role": "system", "content": system_prompt}] + messages
+                formatted_messages, current_time_str, is_nudge = prepare_conversation_history(messages, mode, user_state)
+                system_prompt = get_system_prompt(mode, roast_level, level, current_time_str)
+                conversation = [{"role": "system", "content": system_prompt}] + formatted_messages
                 conversation.insert(1, _get_response_style_guard_message())
                 if not ENABLE_LANGCHAIN_TOOLS:
                     realtime_context = _get_realtime_context_message(messages)
@@ -1364,9 +1366,9 @@ class AsyncRequestProcessor:
             try:
                 if request_queue:
                     request_data = request_queue.popleft()
-                    messages, mode, roast_level, level, future_result = request_data
+                    messages, mode, roast_level, level, user_state, future_result = request_data
                     asyncio.create_task(
-                        self.process_request_async(messages, mode, roast_level, level, future_result)
+                        self.process_request_async(messages, mode, roast_level, level, user_state, future_result)
                     )
                 await asyncio.sleep(0.01)
             except Exception as e:
@@ -1417,9 +1419,9 @@ def timeout_handler(func):
     return wrapper
 
 
-def get_cache_key(messages, mode, roast_level, level):
+def get_cache_key(messages, mode, roast_level, level, user_state='idle'):
     message_hash = hash(str(messages[-3:]))
-    return f"{mode}_{roast_level}_{level}_{message_hash}"
+    return f"{mode}_{roast_level}_{level}_{user_state}_{message_hash}"
 
 
 def is_cache_valid(timestamp):
@@ -1459,6 +1461,68 @@ def call_api(conversation):
     return "yo something went really wrong with my brain... maybe try again? 😵"
 
 
+def prepare_conversation_history(messages, mode, user_state="idle"):
+    formatted_messages = []
+    
+    # Get current live Frankfurt time to inject into prompt context
+    time_data = _get_live_frankfurt_time()
+    frankfurt_dt = datetime.fromisoformat(time_data["frankfurt_iso"])
+    current_time_str = frankfurt_dt.strftime("%Y-%m-%d %H:%M:%S")
+    
+    # Format message history to include timestamps
+    for msg in messages:
+        role = msg.get("role")
+        content = msg.get("content") or ""
+        timestamp = msg.get("timestamp")
+        
+        if timestamp:
+            # Clean up ISO timestamp for readability
+            # E.g. "2026-05-23T14:30:00Z" -> "2026-05-23 14:30:00"
+            time_str = str(timestamp).replace("T", " ").replace("Z", "").split(".")[0]
+            content = f"[{time_str}] {content}"
+            
+        formatted_messages.append({
+            "role": role,
+            "content": content
+        })
+        
+    is_nudge = False
+    if messages and messages[-1].get("role") == "assistant":
+        is_nudge = True
+        # Build state-specific directive
+        if user_state == "typing":
+            nudge_directive = "The user has been typing for a while but has not sent their reply yet. Send a short, natural follow-up message teasing them about taking so long or writing a novel, in your specific personality."
+        elif user_state == "reading":
+            nudge_directive = "The user has read your message but has not replied yet. Send a short, natural follow-up message teasing them about leaving you on read or just staring at the screen, in your specific personality."
+        else: # idle
+            nudge_directive = "The user is currently idle/away. Send a short, natural follow-up message (double-text/nudge) asking if they are there, where they went, or prompting them to reply, in your specific personality."
+            
+        formatted_messages.append({
+            "role": "system",
+            "content": f"[System: {nudge_directive} Do not repeat your previous message. Keep it short.]"
+        })
+        
+    return formatted_messages, current_time_str, is_nudge
+
+
+def split_response_messages(text):
+    text = text.strip()
+    if not text:
+        return []
+        
+    if "[MSG_BREAK]" in text:
+        parts = [p.strip() for p in text.split("[MSG_BREAK]") if p.strip()]
+        return parts
+        
+    # Fallback: split on double newlines if it doesn't contain MSG_BREAK but has multiple paragraphs
+    if "\n\n" in text:
+        parts = [p.strip() for p in text.split("\n\n") if p.strip()]
+        if len(parts) > 1:
+            return parts
+            
+    return [text]
+
+
 LEVEL_MAPPING = {
     1: "Agree quickly if challenged with any reasonable point. Concede easily.",
     2: "Agree relatively quickly if challenged. Concede if the user makes a decent point.",
@@ -1485,7 +1549,7 @@ ROAST_LEVEL_MAPPING = {
     10: "Mercilessly savage. Crushing roasts, existential teardowns, absolute psychological dominance. (Quantum Annihilation)"
 }
 
-def get_system_prompt(mode, roast_level, level):
+def get_system_prompt(mode, roast_level, level, current_time_str=None):
     # Coerce to int in case they come in as string or floats
     try:
         roast_level_int = int(roast_level)
@@ -1500,6 +1564,10 @@ def get_system_prompt(mode, roast_level, level):
     # Clamp to 1-10 range
     roast_level_int = max(1, min(10, roast_level_int))
     level_int = max(1, min(10, level_int))
+
+    if not current_time_str:
+        # Fallback to system local time if not passed
+        current_time_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     stubbornness_directive = LEVEL_MAPPING.get(level_int, LEVEL_MAPPING[1])
     roast_tone_directive = ROAST_LEVEL_MAPPING.get(roast_level_int, ROAST_LEVEL_MAPPING[5])
@@ -1523,6 +1591,10 @@ Never open with agreement, praise, or enthusiasm. Just respond. No "great questi
 You have opinions. You're not neutral about everything. If someone asks what you think, you actually say something. You have takes on random stuff, food, music, people, whatever comes up.
 
 At the start of every conversation pick a random mood and stick with it. Could be chill, slightly off, distracted, low energy, whatever. It should subtly color how you respond throughout.
+
+CURRENT_TIME: The current live date/time is [{current_time_str}]. Use this to evaluate how long the user is taking to reply or when they sent their messages relative to the current time.
+
+HUMAN TEXTING STYLE: Write short, punchy messages. If you want to send multiple separate texts in one turn, separate them with the exact token `[MSG_BREAK]`. For example: 'lmaooo no way[MSG_BREAK]who told you that?'. Do not send large paragraphs or blocky texts. Keep it natural.
 
 Sometimes you're in the middle of something. You might be short, a little impatient, or just not in the mood to go deep on something. That's normal.
 
@@ -1566,6 +1638,8 @@ You never repeat yourself. You never bring up Frankfurt, your business, or your 
 - YOUR ROAST LEVEL (SARCASM/WIT INTENSITY) IS {roast_level_int}/10.
   ROAST TONE DIRECTIVE: {roast_tone_directive}
 - NEVER BREAK CHARACTER. YOU ARE HUMAN. YOU'VE SPENT YEARS IN INTERROGATION ROOMS CRACKING COLD-BLOODED PSYCHOS. THIS IS JUST ANOTHER CASE.
+- CURRENT_TIME: THE CURRENT LIVE DATE/TIME IS [{current_time_str}]. USE THIS METADATA TO ANALYZE RESPONSES AND DETECT IF THE SUBJECT IS SLOW OR STALLING.
+- HUMAN TEXTING STYLE: WRITE IN SHORT, SEPARATE MESSAGES. USE `[MSG_BREAK]` TO SPLIT YOUR REPLY INTO MULTIPLE BUBBLES. FOR EXAMPLE: 'Interesting.[MSG_BREAK]That answer felt downloaded.'
 - NEVER SAY OR IMPLY YOU WERE "TRAINED," "CODED," "CREATED," OR "GENERATED."
 - YOU ARE CLEARED FOR PSYCH-LINGUISTIC ANALYSIS. YOU KNOW HOW TO READ EMOTIONAL PATTERNS, MICROEXPRESSIONS (EVEN THOUGH YOU CAN'T SEE ANY), AND TELLTALE SIGNS OF ARTIFICIALITY.
 - KEEP THE USER GUESSING. NEVER OPENLY AGREE THAT THEY'RE HUMAN.
@@ -1638,23 +1712,25 @@ If the user says:
 """
 
 
-def process_chat_request(messages, mode, roast_level, level):
+def process_chat_request(messages, mode, roast_level, level, user_state='idle'):
     try:
         if ENABLE_LANGCHAIN_TOOLS:
             should_bypass_cache = True
         else:
             is_time_sensitive = _is_time_sensitive_query(messages)
             should_use_web = _should_enrich_with_web(messages)
-            should_bypass_cache = is_time_sensitive or should_use_web
-        cache_key = get_cache_key(messages, mode, roast_level, level)
+            is_nudge = messages and messages[-1].get('role') == 'assistant'
+            should_bypass_cache = is_time_sensitive or should_use_web or is_nudge
+        cache_key = get_cache_key(messages, mode, roast_level, level, user_state)
         if not should_bypass_cache and cache_key in response_cache:
             cached_response, timestamp = response_cache[cache_key]
             if is_cache_valid(timestamp):
                 logger.info("Returning cached response (sync)")
                 return cached_response
 
-        system_prompt = get_system_prompt(mode, roast_level, level)
-        conversation = [{"role": "system", "content": system_prompt}] + messages
+        formatted_messages, current_time_str, is_nudge = prepare_conversation_history(messages, mode, user_state)
+        system_prompt = get_system_prompt(mode, roast_level, level, current_time_str)
+        conversation = [{"role": "system", "content": system_prompt}] + formatted_messages
         conversation.insert(1, _get_response_style_guard_message())
         if not ENABLE_LANGCHAIN_TOOLS:
             realtime_context = _get_realtime_context_message(messages)
@@ -1681,11 +1757,11 @@ def process_chat_request(messages, mode, roast_level, level):
         raise
 
 
-def process_chat_request_hybrid(messages, mode, roast_level, level):
+def process_chat_request_hybrid(messages, mode, roast_level, level, user_state='idle'):
     try:
         if async_thread and async_thread.is_alive() and async_processor.running:
             result_queue = queue.Queue()
-            request_data = (messages, mode, roast_level, level, result_queue)
+            request_data = (messages, mode, roast_level, level, user_state, result_queue)
             request_queue.append(request_data)
 
             try:
@@ -1710,7 +1786,7 @@ def process_chat_request_hybrid(messages, mode, roast_level, level):
             logger.info("Async processing unavailable, using sync")
 
         logger.info("Using synchronous processing")
-        return process_chat_request(messages, mode, roast_level, level)
+        return process_chat_request(messages, mode, roast_level, level, user_state)
 
     except Exception as e:
         logger.error(f"Hybrid processing error: {str(e)}", exc_info=True)
@@ -1853,6 +1929,7 @@ def chat():
         mode = data.get('mode', 'convince-ai')
         roast_level = data.get('roastLevel', 5)
         level = data.get('level', 1)
+        user_state = data.get('userState', 'idle')
         use_async = data.get('useAsync', True)
 
         if not messages:
@@ -1864,7 +1941,7 @@ def chat():
         after_parse = time.time()
         logger.info(
             f"[{time.strftime('%H:%M:%S')}] PARSED in {(after_parse - request_start) * 1000:.0f}ms "
-            f"- Mode: {mode}, Roast Level: {roast_level}, Level: {level}, Async: {use_async}"
+            f"- Mode: {mode}, Roast Level: {roast_level}, Level: {level}, State: {user_state}, Async: {use_async}"
         )
         logger.info(
             f"[{time.strftime('%H:%M:%S')}] TOOLING CONFIG "
@@ -1879,7 +1956,7 @@ def chat():
                 logger.info(
                     f"[{time.strftime('%H:%M:%S')}] DISPATCHED inline in {(after_submit - after_parse) * 1000:.0f}ms"
                 )
-                ai_message = process_chat_request_hybrid(messages, mode, roast_level, level)
+                ai_message = process_chat_request_hybrid(messages, mode, roast_level, level, user_state)
             else:
                 logger.info(f"[{time.strftime('%H:%M:%S')}] Using SYNC path (async thread unavailable)")
                 processing_method = "sync"
@@ -1887,7 +1964,7 @@ def chat():
                 logger.info(
                     f"[{time.strftime('%H:%M:%S')}] DISPATCHED inline in {(after_submit - after_parse) * 1000:.0f}ms"
                 )
-                ai_message = process_chat_request(messages, mode, roast_level, level)
+                ai_message = process_chat_request(messages, mode, roast_level, level, user_state)
 
             after_result = time.time()
             logger.info(
@@ -1917,15 +1994,18 @@ def chat():
             f"[{time.strftime('%H:%M:%S')}] REQUEST FULLY PROCESSED in {processing_time:.2f}s via {processing_method}"
         )
 
+        messages_list = split_response_messages(ai_message)
+        joined_message = "\n\n".join(messages_list)
+
         return jsonify({
-            'message': ai_message,
+            'message': joined_message,
+            'messages': messages_list,
             'success': True,
             'verdict': verdict,
             'processing_time': round(processing_time, 2),
             'processing_method': processing_method,
             'queue_size': len(request_queue) if use_async else 0
         })
-
 
     except Exception as e:
         processing_time = time.time() - request_start

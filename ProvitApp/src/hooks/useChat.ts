@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import { ChatSession, ChatMode } from '../types/chat';
 import { openAIService } from '../services/openai';
 import { chatStorage, generateId } from '../services/chatStorage';
@@ -22,6 +23,20 @@ export const useChat = () => {
     winStars: 0,
     isHistoryLoaded: false,
   });
+
+  const userHasText = useRef(false);
+  const nudgeTimerRef = useRef<any>(null);
+  const hasNudgedRef = useRef(false);
+
+  const currentChatRef = useRef<ChatSession | null>(null);
+  const isLoadingRef = useRef(false);
+  const winDetectedRef = useRef(false);
+
+  useEffect(() => {
+    currentChatRef.current = state.currentChat;
+    isLoadingRef.current = state.isLoading;
+    winDetectedRef.current = state.winDetected;
+  }, [state.currentChat, state.isLoading, state.winDetected]);
 
   // Load chat history from AsyncStorage on initialization
   useEffect(() => {
@@ -212,17 +227,95 @@ export const useChat = () => {
     }
   }, []);
 
-  const sendUserMessage = useCallback(async (content: string) => {
-    const currentState = state;
-    
-    if (currentState.isLoading || !currentState.currentChat) return;
-    if (currentState.winDetected) return; // stop accepting messages after a win
+  const setInputHasText = useCallback((hasText: boolean) => {
+    userHasText.current = hasText;
+  }, []);
 
-    const currentChatSnapshot = currentState.currentChat;
+  const sendNudgeMessage = useCallback(async (userState: 'typing' | 'reading' | 'idle') => {
+    const currentChatSnapshot = currentChatRef.current;
+    if (!currentChatSnapshot || isLoadingRef.current || winDetectedRef.current) return;
+
+    // Set loading state and add typing indicator
+    setState(prev => ({ ...prev, isLoading: true }));
+    const typingId = addMessage('', 'ai', true);
+
+    try {
+      const conversationHistory = currentChatSnapshot.messages.map(msg => ({
+        role: msg.sender === 'user' ? 'user' as const : 'assistant' as const,
+        content: msg.content,
+        timestamp: msg.timestamp instanceof Date ? msg.timestamp.toISOString() : new Date(msg.timestamp).toISOString()
+      }));
+
+      const { message: aiResponse, messages: aiMessages, verdict } = await openAIService.sendMessage(
+        conversationHistory,
+        currentChatSnapshot.mode,
+        currentChatSnapshot.roastLevel,
+        currentChatSnapshot.level,
+        userState
+      );
+
+      const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+      if (aiMessages && aiMessages.length > 0) {
+        updateMessage(typingId, aiMessages[0], false);
+        for (let i = 1; i < aiMessages.length; i++) {
+          const typingDuration = Math.min(Math.max(aiMessages[i].length * 35, 800), 2000);
+          setState(prev => ({ ...prev, isLoading: true }));
+          await sleep(typingDuration);
+          setState(prev => ({ ...prev, isLoading: false }));
+          addMessage(aiMessages[i], 'ai');
+        }
+      } else {
+        updateMessage(typingId, aiResponse, false);
+      }
+
+      // Check win verdict on the nudge response
+      const won = detectWin(aiResponse, currentChatSnapshot.mode, currentChatSnapshot.level, verdict);
+      if (won) {
+        const userMsgCount = currentChatSnapshot.messages.filter(m => m.sender === 'user').length;
+        const stars = calcStars(userMsgCount);
+        setState(prev => {
+          if (!prev.currentChat) return prev;
+          const completedChat = { ...prev.currentChat, levelCompleted: true };
+          const updatedHistory = prev.chatHistory.map(c =>
+            c.id === completedChat.id ? completedChat : c
+          );
+          return {
+            ...prev,
+            currentChat: completedChat,
+            chatHistory: updatedHistory,
+            winDetected: true,
+            winStars: stars,
+          };
+        });
+      }
+    } catch (error) {
+      console.error('❌ Failed to send nudge message:', error);
+      // Remove typing bubble on error
+      setState(prev => {
+        if (!prev.currentChat) return prev;
+        return {
+          ...prev,
+          currentChat: {
+            ...prev.currentChat,
+            messages: prev.currentChat.messages.filter(msg => msg.id !== typingId)
+          }
+        };
+      });
+    } finally {
+      setState(prev => ({ ...prev, isLoading: false }));
+    }
+  }, [addMessage, updateMessage]);
+
+  const sendUserMessage = useCallback(async (content: string) => {
+    const currentChatSnapshot = currentChatRef.current;
+    if (!currentChatSnapshot || isLoadingRef.current || winDetectedRef.current) return;
+
     const isFirstMessage = currentChatSnapshot.messages.length === 0;
 
     // Add user message
     addMessage(content, 'user');
+    hasNudgedRef.current = false; // Reset nudge flag because user replied
     
     // Set loading state and add typing indicator
     setState(prev => ({ ...prev, isLoading: true }));
@@ -237,20 +330,34 @@ export const useChat = () => {
       const conversationHistory = [
         ...currentChatSnapshot.messages.map(msg => ({
           role: msg.sender === 'user' ? 'user' as const : 'assistant' as const,
-          content: msg.content
+          content: msg.content,
+          timestamp: msg.timestamp instanceof Date ? msg.timestamp.toISOString() : new Date(msg.timestamp).toISOString()
         })),
-        { role: 'user' as const, content }
+        { role: 'user' as const, content, timestamp: new Date().toISOString() }
       ];
 
-      const { message: aiResponse, verdict } = await openAIService.sendMessage(
+      const { message: aiResponse, messages: aiMessages, verdict } = await openAIService.sendMessage(
         conversationHistory, 
         currentChatSnapshot.mode, 
         currentChatSnapshot.roastLevel,
         currentChatSnapshot.level
       );
       
-      // Update the typing message with actual response
-      updateMessage(typingId, aiResponse, false);
+      const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+      // Update/add response bubbles
+      if (aiMessages && aiMessages.length > 0) {
+        updateMessage(typingId, aiMessages[0], false);
+        for (let i = 1; i < aiMessages.length; i++) {
+          const typingDuration = Math.min(Math.max(aiMessages[i].length * 35, 800), 2000);
+          setState(prev => ({ ...prev, isLoading: true }));
+          await sleep(typingDuration);
+          setState(prev => ({ ...prev, isLoading: false }));
+          addMessage(aiMessages[i], 'ai');
+        }
+      } else {
+        updateMessage(typingId, aiResponse, false);
+      }
 
       // ── Win Detection ─────────────────────────────────────
       const won = detectWin(aiResponse, currentChatSnapshot.mode, currentChatSnapshot.level, verdict);
@@ -288,7 +395,45 @@ export const useChat = () => {
     } finally {
       setState(prev => ({ ...prev, isLoading: false }));
     }
-  }, [state, addMessage, updateMessage, updateChatName]);
+  }, [addMessage, updateMessage, updateChatName]);
+
+  const currentChatId = state.currentChat?.id;
+  const messagesCount = state.currentChat?.messages?.length ?? 0;
+
+  useEffect(() => {
+    // Clear any existing timer
+    if (nudgeTimerRef.current) {
+      clearTimeout(nudgeTimerRef.current);
+      nudgeTimerRef.current = null;
+    }
+
+    const currentChatSnapshot = currentChatRef.current;
+    if (!currentChatSnapshot || isLoadingRef.current || winDetectedRef.current) return;
+
+    const messages = currentChatSnapshot.messages;
+    if (messages.length === 0) return;
+
+    const lastMessage = messages[messages.length - 1];
+    
+    // Only schedule a nudge if the last message is from the AI
+    if (lastMessage.sender === 'ai' && !hasNudgedRef.current) {
+      nudgeTimerRef.current = setTimeout(() => {
+        let userState: 'typing' | 'reading' | 'idle' = 'idle';
+        if (AppState.currentState === 'active') {
+          userState = userHasText.current ? 'typing' : 'reading';
+        }
+        sendNudgeMessage(userState);
+        hasNudgedRef.current = true;
+      }, 25000); // 25 seconds
+    }
+
+    return () => {
+      if (nudgeTimerRef.current) {
+        clearTimeout(nudgeTimerRef.current);
+        nudgeTimerRef.current = null;
+      }
+    };
+  }, [currentChatId, messagesCount, state.isLoading, state.winDetected, sendNudgeMessage]);
 
   const updateChatSettings = useCallback((chatId: string, settings: { mode?: ChatMode; roastLevel?: number }) => {
     setState(prev => {
@@ -349,5 +494,7 @@ export const useChat = () => {
     clearCurrentChat,
     // Win state
     dismissWin,
+    // Typing status setter
+    setInputHasText,
   };
 };

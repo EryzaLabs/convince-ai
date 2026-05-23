@@ -75,6 +75,7 @@ function AppContent() {
     sendUserMessage,
     updateChatSettings,
     dismissWin,
+    setInputHasText,
   } = useChat();
 
   const {
@@ -248,6 +249,7 @@ function AppContent() {
               isLoading={isLoading}
               mode={currentChat.mode}
               roastLevel={currentChat.roastLevel}
+              onTypingStatusChange={setInputHasText}
             />
           </>
         ) : (

@@ -4,14 +4,16 @@ const API_BASE_URL = 'https://convince.dotverse.tech/api';
 
 export interface ChatResponse {
   message: string;
+  messages?: string[];
   verdict?: 'won' | 'ongoing';
 }
 
 export const sendMessage = async (
-  messages: Array<{role: 'user' | 'assistant' | 'system', content: string}>,
+  messages: Array<{role: 'user' | 'assistant' | 'system', content: string, timestamp?: string}>,
   mode: ChatMode,
   roastLevel: number,
-  level: number = 1
+  level: number = 1,
+  userState?: string
 ): Promise<ChatResponse> => {
   try {
     const response = await fetch(`${API_BASE_URL}/chat`, {
@@ -24,6 +26,7 @@ export const sendMessage = async (
         mode,
         roastLevel,
         level,
+        userState,
       }),
     });
 
@@ -39,6 +42,7 @@ export const sendMessage = async (
 
     return {
       message: data.message,
+      messages: data.messages,
       verdict: data.verdict, // 'won' | 'ongoing' | undefined
     };
   } catch (error) {
@@ -145,13 +149,14 @@ export class OpenAIService {
     this.apiKey = apiKey;
   }
   async sendMessage(
-    messages: Array<{role: 'user' | 'assistant' | 'system'; content: string}>, 
+    messages: Array<{role: 'user' | 'assistant' | 'system'; content: string; timestamp?: string}>, 
     mode: ChatMode, 
     roastLevel: number = 5,
-    level: number = 1
+    level: number = 1,
+    userState?: string
   ): Promise<ChatResponse> {
     try {
-      return await sendMessage(messages, mode, roastLevel, level);
+      return await sendMessage(messages, mode, roastLevel, level, userState);
     } catch (error) {
       console.error('OpenAI Service Error:', error);
       // Return a mock response as fallback

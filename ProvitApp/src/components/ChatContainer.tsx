@@ -31,6 +31,7 @@ interface ChatContainerProps {
   isLoading: boolean;
   mode: ChatMode;
   roastLevel?: number;
+  onTypingStatusChange?: (isTyping: boolean) => void;
 }
 
 export const ChatContainer: React.FC<ChatContainerProps> = ({
@@ -38,6 +39,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
   onSendMessage,
   isLoading,
   mode,
+  onTypingStatusChange,
 }) => {
   const scrollViewRef = useRef<ScrollView>(null);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -149,6 +151,7 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
         placeholder={mode === 'convince-ai' ? 'Try convincing ProvIt...' : 'Message ProvIt...'}
         replyTo={replyTo}
         onCancelReply={() => setReplyTo(null)}
+        onTypingStatusChange={onTypingStatusChange}
       />
     </View>
   );

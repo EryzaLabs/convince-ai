@@ -32,6 +32,7 @@ interface ChatInputProps {
   placeholder?: string;
   replyTo?: Message | null;
   onCancelReply?: () => void;
+  onTypingStatusChange?: (isTyping: boolean) => void;
 }
 
 export const ChatInput: React.FC<ChatInputProps> = ({
@@ -40,6 +41,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   placeholder = 'Ask anything...',
   replyTo,
   onCancelReply,
+  onTypingStatusChange,
 }) => {
   const [message, setMessage] = useState('');
   const [emojiOpen, setEmojiOpen] = useState(false);
@@ -66,6 +68,10 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       ]).start();
     }
   }, [replyTo]);
+
+  useEffect(() => {
+    onTypingStatusChange?.(message.trim().length > 0);
+  }, [message, onTypingStatusChange]);
 
   const canSend = message.trim().length > 0;
 
