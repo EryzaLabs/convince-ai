@@ -25,7 +25,7 @@ import {
 } from 'lucide-react-native';
 
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import EmojiPicker from 'rn-emoji-keyboard';
 import { Message } from '../types/chat';
 
@@ -83,7 +83,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
   const canSend = message.trim().length > 0 || attachedImage !== null;
 
-  const handleSelectImage = async () => {
+  const handleSelectImage = async (shouldCrop: boolean | any = false) => {
     try {
       const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permissionResult.granted) {
@@ -93,7 +93,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
+        allowsEditing: typeof shouldCrop === 'boolean' ? shouldCrop : false,
         quality: 0.7,
         base64: true,
       });
@@ -197,16 +197,23 @@ export const ChatInput: React.FC<ChatInputProps> = ({
         {/* ── Image attachment preview bar ──────────────────────────── */}
         {attachedImage && (
           <View style={styles.imagePreviewBar}>
-            <View style={styles.imagePreviewWrapper}>
+            <TouchableOpacity
+                style={styles.imagePreviewWrapper}
+                activeOpacity={0.85}
+                onPress={() => handleSelectImage(true)}
+              >
               <Image source={{ uri: attachedImage.uri }} style={styles.imagePreview} />
               <TouchableOpacity
-                onPress={() => setAttachedImage(null)}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  setAttachedImage(null);
+                }}
                 style={styles.removeImageButton}
                 activeOpacity={0.8}
               >
                 <X size={12} color="#ffffff" />
               </TouchableOpacity>
-            </View>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -215,7 +222,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           {/* Attachment */}
           <TouchableOpacity 
             style={styles.iconButton}
-            onPress={handleSelectImage}
+            onPress={() => handleSelectImage(false)}
           >
             <Paperclip size={20} color={attachedImage ? "#3b82f6" : "#94a3b8"} />
           </TouchableOpacity>

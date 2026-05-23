@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { ChatSession, ChatMode, Message } from '../types/chat';
 import { openAIService } from '../services/openai';
 import { chatStorage, generateId } from '../services/chatStorage';

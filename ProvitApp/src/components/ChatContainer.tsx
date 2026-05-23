@@ -93,7 +93,15 @@ export const ChatContainer: React.FC<ChatContainerProps> = ({
 
   const emptyState = getEmptyState();
   const visibleMessages = messages.filter(
-    m => m && typeof m.content === 'string' && m.content.trim().length > 0
+    m =>
+      m &&
+      (
+        (
+          typeof m.content === 'string' &&
+          m.content.trim().length > 0
+        ) ||
+        !!m.imageUri
+      )
   );
 
   return (

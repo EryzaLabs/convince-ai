@@ -12,10 +12,13 @@ import {
   Image,
   Animated,
   PanResponder,
+  Modal,
+  Pressable,
 } from 'react-native';
 
 import * as Clipboard from 'expo-clipboard';
-import { CornerUpLeft } from 'lucide-react-native';
+import { CornerUpLeft, X } from 'lucide-react-native';
+
 
 import {
   Message,
@@ -38,6 +41,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const isUser = message?.sender === 'user';
 
   const [copied, setCopied] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+
 
   // ── Entrance fade ────────────────────────────────────────
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -229,10 +234,16 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           )}
 
           {!isTyping && message?.imageUri && (
-            <Image
-              source={{ uri: message.imageUri }}
-              style={styles.bubbleImage}
-            />
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => setModalVisible(true)}
+              style={styles.bubbleImageWrapper}
+            >
+              <Image
+                source={{ uri: message.imageUri }}
+                style={styles.bubbleImage}
+              />
+            </TouchableOpacity>
           )}
 
           {isTyping ? (
@@ -272,6 +283,36 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           </View>
         )}
       </Animated.View>
+      {/* Full screen image Modal */}
+      {message?.imageUri && (
+        <Modal
+          visible={modalVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <Pressable
+            style={styles.modalBackground}
+            onPress={() => setModalVisible(false)}
+          >
+            <View style={styles.modalContent}>
+              <TouchableOpacity
+                style={styles.modalCloseButton}
+                onPress={() => setModalVisible(false)}
+                activeOpacity={0.8}
+              >
+                <X size={24} color="#ffffff" />
+              </TouchableOpacity>
+              <Image
+                source={{ uri: message.imageUri }}
+                style={styles.fullImage}
+                resizeMode="contain"
+              />
+            </View>
+          </Pressable>
+        </Modal>
+      )}
+
     </Animated.View>
   );
 };
@@ -494,4 +535,41 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.05)',
   },
+  bubbleImageWrapper: {
+    overflow: 'hidden',
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  modalBackground: {
+    flex: 1,
+    backgroundColor: 'rgba(2, 6, 23, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  modalCloseButton: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(30, 41, 59, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  fullImage: {
+    width: '94%',
+    height: '80%',
+  },
+
 });
