@@ -13,6 +13,7 @@ import {
   Platform,
   Animated,
   Text,
+  Image,
 } from 'react-native';
 
 import {
@@ -23,11 +24,17 @@ import {
   CornerUpLeft,
 } from 'lucide-react-native';
 
+import * as ImagePicker from 'expo-image-picker';
+import * as FileSystem from 'expo-file-system';
 import EmojiPicker from 'rn-emoji-keyboard';
 import { Message } from '../types/chat';
 
 interface ChatInputProps {
-  onSendMessage: (message: string, replyTo?: Message['replyTo']) => void;
+  onSendMessage: (
+    message: string, 
+    replyTo?: Message['replyTo'],
+    attachedImage?: { uri: string; base64: string | null }
+  ) => void;
   isLoading: boolean;
   placeholder?: string;
   replyTo?: Message | null;
@@ -45,6 +52,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 }) => {
   const [message, setMessage] = useState('');
   const [emojiOpen, setEmojiOpen] = useState(false);
+  const [attachedImage, setAttachedImage] = useState<{ uri: string; base64: string | null } | null>(null);
 
   const inputRef = useRef<TextInput>(null);
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -73,7 +81,47 @@ export const ChatInput: React.FC<ChatInputProps> = ({
     onTypingStatusChange?.(message.trim().length > 0);
   }, [message, onTypingStatusChange]);
 
-  const canSend = message.trim().length > 0;
+  const canSend = message.trim().length > 0 || attachedImage !== null;
+
+  const handleSelectImage = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        alert("Permission to access media library is required to attach images!");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.7,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        let base64Str = asset.base64 || null;
+        
+        // If base64 is missing, read it manually
+        if (!base64Str) {
+          try {
+            base64Str = await FileSystem.readAsStringAsync(asset.uri, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+          } catch (readErr) {
+            console.error("Failed to read image as base64", readErr);
+          }
+        }
+
+        setAttachedImage({
+          uri: asset.uri,
+          base64: base64Str ? `data:image/jpeg;base64,${base64Str}` : null,
+        });
+      }
+    } catch (err) {
+      console.error("Error launching image picker", err);
+    }
+  };
 
   const animateButton = () => {
     Animated.sequence([
@@ -83,7 +131,8 @@ export const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   const handleSend = () => {
-    if (!canSend || isLoading) return;
+    if (!canSend && !attachedImage) return;
+    if (isLoading) return;
 
     const finalMessage = message.trim();
     let replyMetadata: Message['replyTo'] | undefined = undefined;
@@ -96,8 +145,9 @@ export const ChatInput: React.FC<ChatInputProps> = ({
       onCancelReply?.();
     }
 
-    onSendMessage(finalMessage, replyMetadata);
+    onSendMessage(finalMessage, replyMetadata, attachedImage || undefined);
     setMessage('');
+    setAttachedImage(null);
 
     requestAnimationFrame(() => {
       inputRef.current?.focus();
@@ -144,11 +194,30 @@ export const ChatInput: React.FC<ChatInputProps> = ({
           </View>
         </Animated.View>
 
+        {/* ── Image attachment preview bar ──────────────────────────── */}
+        {attachedImage && (
+          <View style={styles.imagePreviewBar}>
+            <View style={styles.imagePreviewWrapper}>
+              <Image source={{ uri: attachedImage.uri }} style={styles.imagePreview} />
+              <TouchableOpacity
+                onPress={() => setAttachedImage(null)}
+                style={styles.removeImageButton}
+                activeOpacity={0.8}
+              >
+                <X size={12} color="#ffffff" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* ── Input row ─────────────────────────────────── */}
         <View style={styles.container}>
           {/* Attachment */}
-          <TouchableOpacity style={styles.iconButton}>
-            <Paperclip size={20} color="#94a3b8" />
+          <TouchableOpacity 
+            style={styles.iconButton}
+            onPress={handleSelectImage}
+          >
+            <Paperclip size={20} color={attachedImage ? "#3b82f6" : "#94a3b8"} />
           </TouchableOpacity>
 
           {/* Input */}
@@ -335,5 +404,42 @@ const styles = StyleSheet.create({
   processing: {
     color: '#94a3b8',
     fontSize: 11,
+  },
+
+  // ── Image attachment preview styles
+  imagePreviewBar: {
+    flexDirection: 'row',
+    marginBottom: 8,
+    paddingLeft: 4,
+  },
+  imagePreviewWrapper: {
+    position: 'relative',
+    width: 66,
+    height: 66,
+  },
+  imagePreview: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  removeImageButton: {
+    position: 'absolute',
+    top: -4,
+    right: 2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#ef4444',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#0f172a',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.5,
+    elevation: 2,
   },
 });

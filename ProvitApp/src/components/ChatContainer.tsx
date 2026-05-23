@@ -27,7 +27,11 @@ import {
 
 interface ChatContainerProps {
   messages: Message[];
-  onSendMessage: (message: string, replyTo?: Message['replyTo']) => void;
+  onSendMessage: (
+    message: string,
+    replyTo?: Message['replyTo'],
+    attachedImage?: { uri: string; base64: string | null }
+  ) => void;
   isLoading: boolean;
   mode: ChatMode;
   roastLevel?: number;

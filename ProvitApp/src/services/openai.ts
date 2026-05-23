@@ -13,7 +13,8 @@ export const sendMessage = async (
   mode: ChatMode,
   roastLevel: number,
   level: number = 1,
-  userState?: string
+  userState?: string,
+  image?: string
 ): Promise<ChatResponse> => {
   try {
     const response = await fetch(`${API_BASE_URL}/chat`, {
@@ -27,6 +28,7 @@ export const sendMessage = async (
         roastLevel,
         level,
         userState,
+        image,
       }),
     });
 
@@ -153,10 +155,11 @@ export class OpenAIService {
     mode: ChatMode, 
     roastLevel: number = 5,
     level: number = 1,
-    userState?: string
+    userState?: string,
+    image?: string
   ): Promise<ChatResponse> {
     try {
-      return await sendMessage(messages, mode, roastLevel, level, userState);
+      return await sendMessage(messages, mode, roastLevel, level, userState, image);
     } catch (error) {
       console.error('OpenAI Service Error:', error);
       // Return a mock response as fallback

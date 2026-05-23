@@ -228,6 +228,13 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             </View>
           )}
 
+          {!isTyping && message?.imageUri && (
+            <Image
+              source={{ uri: message.imageUri }}
+              style={styles.bubbleImage}
+            />
+          )}
+
           {isTyping ? (
             <View style={styles.typingContainer}>
               <Animated.View style={[styles.typingDot, { opacity: dot1, transform: [{ scale: dot1 }] }]} />
@@ -478,5 +485,13 @@ const styles = StyleSheet.create({
     color: '#94a3b8',
     fontSize: 12,
     lineHeight: 16,
+  },
+  bubbleImage: {
+    width: 220,
+    height: 160,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
 });

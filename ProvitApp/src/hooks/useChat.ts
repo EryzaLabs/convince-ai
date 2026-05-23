@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
+import * as FileSystem from 'expo-file-system';
 import { ChatSession, ChatMode, Message } from '../types/chat';
 import { openAIService } from '../services/openai';
 import { chatStorage, generateId } from '../services/chatStorage';
@@ -126,14 +127,21 @@ export const useChat = () => {
     });
   }, []);
 
-  const addMessage = useCallback((content: string, sender: 'user' | 'ai', isTyping = false, replyTo?: Message['replyTo']) => {
+  const addMessage = useCallback((
+    content: string, 
+    sender: 'user' | 'ai', 
+    isTyping = false, 
+    replyTo?: Message['replyTo'],
+    imageUri?: string
+  ) => {
     const message = {
       id: Date.now().toString() + Math.random(),
       content,
       sender,
       timestamp: new Date(),
       isTyping,
-      replyTo
+      replyTo,
+      imageUri
     };
 
     setState(prev => {
@@ -316,14 +324,35 @@ export const useChat = () => {
     }
   }, [addMessage, updateMessage]);
 
-  const sendUserMessage = useCallback(async (content: string, replyTo?: Message['replyTo']) => {
+  const sendUserMessage = useCallback(async (
+    content: string, 
+    replyTo?: Message['replyTo'],
+    attachedImage?: { uri: string; base64: string | null }
+  ) => {
     const currentChatSnapshot = currentChatRef.current;
     if (!currentChatSnapshot || isLoadingRef.current || winDetectedRef.current) return;
 
     const isFirstMessage = currentChatSnapshot.messages.length === 0;
 
-    // Add user message with replyTo metadata
-    addMessage(content, 'user', false, replyTo);
+    // Save image to permanent storage locally if attached
+    let permanentUri: string | undefined = undefined;
+    if (attachedImage) {
+      const fileName = attachedImage.uri.split('/').pop() || `img_${Date.now()}.jpg`;
+      const newPath = `${FileSystem.documentDirectory}${Date.now()}_${fileName}`;
+      try {
+        await FileSystem.copyAsync({
+          from: attachedImage.uri,
+          to: newPath
+        });
+        permanentUri = newPath;
+      } catch (e) {
+        console.error("Failed to copy attached image locally", e);
+        permanentUri = attachedImage.uri; // Fallback to temp path
+      }
+    }
+
+    // Add user message with replyTo metadata and imageUri
+    addMessage(content, 'user', false, replyTo, permanentUri);
     hasNudgedRef.current = false; // Reset nudge flag because user replied
     
     // Set loading state and add typing indicator
@@ -363,7 +392,9 @@ export const useChat = () => {
         conversationHistory, 
         currentChatSnapshot.mode, 
         currentChatSnapshot.roastLevel,
-        currentChatSnapshot.level
+        currentChatSnapshot.level,
+        undefined,
+        attachedImage?.base64 || undefined
       );
       
       const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

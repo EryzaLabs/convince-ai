@@ -24,7 +24,7 @@ class TestBackendEndpoints(unittest.TestCase):
         # Test convince-ai
         prompt = get_system_prompt('convince-ai', 7, 3, '2026-05-23 12:00:00')
         self.assertIn("Your current stubbornness level (how hard you are to convince that you are an AI) is 3/10", prompt)
-        self.assertIn("STUBBORNNESS DIRECTIVE: Ask a follow-up question, but concede if the user explains their reasoning.", prompt)
+        self.assertIn("STUBBORNNESS DIRECTIVE: Deny being an AI. Question the user's claim and ask a follow-up questioning their logic. Concede only if the user explains their reasoning with a reasonable argument or points out a specific behavioral pattern.", prompt)
         self.assertIn("Your roast level (how savage/sarcastic your personality tone is) is 7/10", prompt)
         self.assertIn("ROAST TONE DIRECTIVE: Sardonically critical. Directly roasts the user's grammar, reasoning, or assumptions.", prompt)
         self.assertIn("CURRENT_TIME: The current live date/time is [2026-05-23 12:00:00]", prompt)

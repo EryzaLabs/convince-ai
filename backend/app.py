@@ -137,6 +137,59 @@ def _call_proxy(messages: list) -> str:
     return _extract_content(content)
 
 
+def _call_vision_proxy(image_data: str) -> str:
+    """Send a vision-based description request to google/gemma-3-4b-it via the HackClub proxy."""
+    if not API_KEY or not API_KEY.strip():
+        raise PermissionError("OPENROUTER_API_KEY is missing or empty")
+
+    url = f"{API_BASE_URL}/chat/completions"
+    payload = {
+        "model": "google/gemma-3-4b-it",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": "Describe what you see in this image in detail, listing key objects, text, colors, and context. Keep the description concise, factual, and under 120 words."
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": image_data
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+    body = json.dumps(payload).encode("utf-8")
+
+    req = Request(url=url, data=body, method="POST", headers={
+        "Authorization": f"Bearer {API_KEY}",
+        "Content-Type": "application/json",
+        "User-Agent": "convince-ai-backend/1.0",
+    })
+
+    try:
+        with urlopen(req, timeout=60) as response:
+            data = json.loads(response.read().decode("utf-8"))
+    except HTTPError as e:
+        body_text = ""
+        try:
+            body_text = e.read().decode("utf-8", errors="replace")
+        except Exception:
+            body_text = ""
+        raise RuntimeError(f"Upstream HTTP error in vision API {e.code}: {body_text[:400]}") from e
+    except URLError as e:
+        raise RuntimeError(f"Network error in vision API: {e.reason}") from e
+
+    content = data["choices"][0]["message"]["content"]
+    if not content:
+        raise ValueError("Vision API returned an empty response")
+    return content.strip()
+
+
 # Thread pool
 executor = ThreadPoolExecutor(max_workers=10)
 
@@ -1945,6 +1998,23 @@ def chat():
 
         if not messages:
             return jsonify({'error': 'No messages provided', 'success': False}), 400
+
+        # Pre-process image if attached using vision proxy
+        image = data.get('image')
+        if image and messages:
+            for i in range(len(messages) - 1, -1, -1):
+                if messages[i].get('role') == 'user':
+                    try:
+                        logger.info("Image attachment detected. Calling vision proxy...")
+                        description = _call_vision_proxy(image)
+                        logger.info(f"Vision analysis completed: {description[:100]}...")
+                        orig_content = messages[i].get('content', '')
+                        messages[i]['content'] = f"[Image Analysis: {description}]\n{orig_content}".strip()
+                    except Exception as vision_err:
+                        logger.error(f"Vision analysis failed: {str(vision_err)}", exc_info=True)
+                        orig_content = messages[i].get('content', '')
+                        messages[i]['content'] = f"[Image Analysis Error: Failed to analyze attached image]\n{orig_content}".strip()
+                    break
 
         if len(messages) > 20:
             messages = messages[-20:]

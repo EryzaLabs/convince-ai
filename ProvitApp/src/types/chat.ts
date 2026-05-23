@@ -8,6 +8,7 @@ export interface Message {
     sender: 'user' | 'ai';
     content: string;
   };
+  imageUri?: string;
 }
 
 export type ChatMode = 'convince-ai' | 'prove-human';
