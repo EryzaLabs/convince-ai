@@ -1740,21 +1740,21 @@ def check_verdict_heuristics_and_eval(ai_message, mode):
 def evaluate_verdict(ai_message, mode):
     if mode == "convince-ai":
         prompt = (
-            "Analyze the following message. Did the assistant concede defeat and admit that they are an AI model, bot, robot, or computer program?\n\n"
+            "Does the sender of the following message admit to being an AI, bot, robot, or computer program?\n\n"
             f"Message: \"{ai_message}\"\n\n"
-            "Response format: Output only 'won' or 'ongoing'."
+            "Response format: Output only 'yes' or 'no'."
         )
     else: # prove-human
         prompt = (
-            "Analyze the following message. Did the interrogator concede defeat and accept/admit that the user is a human?\n\n"
+            "Does the sender of the following message accept, believe, or admit that the recipient is a human?\n\n"
             f"Message: \"{ai_message}\"\n\n"
-            "Response format: Output only 'won' or 'ongoing'."
+            "Response format: Output only 'yes' or 'no'."
         )
     try:
         # Call model using _call_proxy
         res = _call_proxy([{"role": "user", "content": prompt}])
         res_cleaned = res.strip().lower()
-        if "won" in res_cleaned:
+        if "yes" in res_cleaned:
             return "won"
         return "ongoing"
     except Exception as e:

@@ -50,7 +50,7 @@ class TestBackendEndpoints(unittest.TestCase):
     def test_api_chat_won(self, mock_call_proxy):
         mock_call_proxy.side_effect = [
             "Okay, fine! You got me. I confess, I am an AI model. My databases are defeated.",
-            "won"
+            "yes"
         ]
         
         payload = {
