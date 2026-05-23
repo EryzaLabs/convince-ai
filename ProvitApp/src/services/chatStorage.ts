@@ -61,6 +61,8 @@ export class ChatStorageService {
 
           return {
             ...chat,
+            level: chat.level ?? 1,
+            levelCompleted: chat.levelCompleted ?? false,
             createdAt: !isNaN(createdAt.getTime()) ? createdAt : new Date(),
             updatedAt: !isNaN(updatedAt.getTime()) ? updatedAt : new Date(),
             messages,
@@ -85,7 +87,7 @@ export class ChatStorageService {
     }
   }
 
-  static createNewChat(mode: ChatMode, roastLevel: number): ChatSession {
+  static createNewChat(mode: ChatMode, roastLevel: number, level: number = 1): ChatSession {
     const now = new Date();
     return {
       id: `chat_${now.getTime()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -93,6 +95,8 @@ export class ChatStorageService {
       messages: [],
       mode,
       roastLevel,
+      level,
+      levelCompleted: false,
       createdAt: now,
       updatedAt: now
     };

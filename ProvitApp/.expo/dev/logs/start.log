@@ -536,3 +536,92 @@
 {"_e":"metro:bundling:progress","_t":1779477019861,"id":"b","progress":0,"total":1,"current":0}
 {"_e":"metro:bundling:done","_t":1779477020072,"id":"b","total":1,"ms":1242.8235}
 {"_e":"metro:client_log","_t":1779477031943,"level":"warn","data":["SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/AppAndFlow/react-native-safe-area-context"]}
+{"_e":"root:init","_t":1779511169329,"format":"v0-jsonl","version":"56.1.10"}
+{"_e":"env:mode","_t":1779511169332,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1779511169337,"mode":"development","files":[],"env":{}}
+{"_e":"devserver:start","_t":1779511170294,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1779511171347,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"metro:instantiate","_t":1779511205043,"atlas":false,"workers":8,"host":"::","port":8081}
+{"_e":"root:init","_t":1779512049557,"format":"v0-jsonl","version":"56.1.10"}
+{"_e":"env:mode","_t":1779512049559,"nodeEnv":"development","babelEnv":"development","mode":"development"}
+{"_e":"env:load","_t":1779512049565,"mode":"development","files":[],"env":{}}
+{"_e":"devserver:start","_t":1779512050508,"mode":"development","web":true,"baseUrl":"","asyncRoutes":false,"routerRoot":"../..\\..\\app","serverComponents":false,"serverActions":false,"serverRendering":false,"apiRoutes":false,"exporting":false}
+{"_e":"metro:config","_t":1779512051561,"serverRoot":"../..\\..","projectRoot":"../..\\..","exporting":false,"flags":{"autolinkingModuleResolution":false,"serverActions":false,"serverComponents":false,"reactCompiler":false,"optimizeGraph":false,"treeshaking":false,"logbox":false}}
+{"_e":"metro:instantiate","_t":1779512083417,"atlas":false,"workers":8,"host":"::","port":8081}
+{"_e":"metro:bundling:started","_t":1779512122380,"id":"4","platform":"android","environment":null,"entry":"node_modules\\expo\\AppEntry.js"}
+{"_e":"metro:bundling:progress","_t":1779512122383,"id":"4","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1779512122394,"id":"4","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1779512122496,"id":"4","progress":0.0013223140495867767,"total":110,"current":4}
+{"_e":"metro:bundling:progress","_t":1779512122595,"id":"4","progress":0.018595041322314047,"total":176,"current":24}
+{"_e":"metro:bundling:progress","_t":1779512122695,"id":"4","progress":0.0690175237000862,"total":236,"current":62}
+{"_e":"metro:bundling:progress","_t":1779512122796,"id":"4","progress":0.15738779897876914,"total":305,"current":121}
+{"_e":"metro:bundling:progress","_t":1779512122896,"id":"4","progress":0.24731905422592207,"total":372,"current":185}
+{"_e":"metro:bundling:progress","_t":1779512122996,"id":"4","progress":0.30514768978471046,"total":458,"current":253}
+{"_e":"metro:bundling:progress","_t":1779512123136,"id":"4","progress":0.344752125241983,"total":545,"current":320}
+{"_e":"metro:bundling:progress","_t":1779512123253,"id":"4","progress":0.344752125241983,"total":546,"current":320}
+{"_e":"metro:bundling:progress","_t":1779512123459,"id":"4","progress":0.344752125241983,"total":2259,"current":320}
+{"_e":"metro:bundling:progress","_t":1779512123469,"id":"4","progress":0.344752125241983,"total":2259,"current":321}
+{"_e":"metro:bundling:progress","_t":1779512123569,"id":"4","progress":0.344752125241983,"total":2273,"current":335}
+{"_e":"metro:bundling:progress","_t":1779512123669,"id":"4","progress":0.344752125241983,"total":2295,"current":376}
+{"_e":"metro:bundling:progress","_t":1779512123769,"id":"4","progress":0.344752125241983,"total":2326,"current":464}
+{"_e":"metro:bundling:progress","_t":1779512123869,"id":"4","progress":0.344752125241983,"total":2350,"current":847}
+{"_e":"metro:bundling:progress","_t":1779512123969,"id":"4","progress":0.3987788139429606,"total":2350,"current":1484}
+{"_e":"metro:bundling:progress","_t":1779512124069,"id":"4","progress":0.5925723856948846,"total":2350,"current":1809}
+{"_e":"metro:bundling:progress","_t":1779512124169,"id":"4","progress":0.8464,"total":2350,"current":2162}
+{"_e":"metro:bundling:progress","_t":1779512124269,"id":"4","progress":0.92809930851798,"total":2403,"current":2315}
+{"_e":"metro:bundling:progress","_t":1779512124383,"id":"4","progress":0.9417131583584781,"total":2434,"current":2362}
+{"_e":"metro:bundling:progress","_t":1779512124483,"id":"4","progress":0.9599962389586123,"total":2524,"current":2473}
+{"_e":"metro:bundling:progress","_t":1779512124583,"id":"4","progress":0.9599962389586123,"total":2641,"current":2566}
+{"_e":"metro:bundling:progress","_t":1779512124683,"id":"4","progress":0.9773771231377831,"total":2725,"current":2694}
+{"_e":"metro:bundling:progress","_t":1779512124783,"id":"4","progress":0.9869519338842976,"total":2750,"current":2732}
+{"_e":"metro:bundling:progress","_t":1779512124909,"id":"4","progress":0.999,"total":2764,"current":2764}
+{"_e":"metro:bundling:done","_t":1779512125161,"id":"4","total":2764,"ms":2779.354}
+{"_e":"metro:client_log","_t":1779512140776,"level":"warn","data":["SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/AppAndFlow/react-native-safe-area-context"]}
+{"_e":"metro:bundling:started","_t":1779515068957,"id":"8","platform":"android","environment":null,"entry":"node_modules\\expo\\AppEntry.js"}
+{"_e":"metro:bundling:progress","_t":1779515068959,"id":"8","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1779515068992,"id":"8","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1779515069323,"id":"8","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1779515069578,"id":"8","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1779515069677,"id":"8","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1779515069777,"id":"8","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1779515069877,"id":"8","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1779515069977,"id":"8","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1779515070080,"id":"8","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1779515070196,"id":"8","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1779515072480,"id":"8","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:done","_t":1779515072609,"id":"8","total":1,"ms":3651.3147}
+{"_e":"metro:client_log","_t":1779515089086,"level":"warn","data":["SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/AppAndFlow/react-native-safe-area-context"]}
+{"_e":"metro:bundling:started","_t":1779515268403,"id":"b","platform":"android","environment":null,"entry":"node_modules\\expo\\AppEntry.js"}
+{"_e":"metro:bundling:progress","_t":1779515268404,"id":"b","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:done","_t":1779515268528,"id":"b","total":1,"ms":124.3293}
+{"_e":"metro:client_log","_t":1779515284006,"level":"warn","data":["SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/AppAndFlow/react-native-safe-area-context"]}
+{"_e":"metro:bundling:failed","_t":1779515627824,"id":null,"message":"Unable to resolve \"./src/components/Homepage\" from \"App.tsx\"\n  11 | import Constants from 'expo-constants';\n  12 |\n> 13 | import { Homepage } from './src/components/Homepage';\n     |                           ^\n  14 | import { Header } from './src/components/Header';\n  15 | import { ChatContainer } from './src/components/ChatContainer';\n  16 | import { ChatSidebar } from './src/components/ChatSidebar';","importStack":"\u001b[1mImport stack:\u001b[22m\n\n\u001b[90m \u001b[39mApp.tsx\n\u001b[90m |\u001b[39m \u001b[36mimport\u001b[39m \u001b[32m\"./src/components/Homepage\"\u001b[39m\n\u001b[90m\u001b[39m\n\u001b[90m\u001b[90m \u001b[39m\u001b[90mnode_modules\\expo\\AppEntry.js\u001b[39m\n\u001b[90m\u001b[90m |\u001b[39m\u001b[90m \u001b[36mimport\u001b[39m\u001b[90m \u001b[32m\"../../App\"\u001b[39m\u001b[90m\u001b[39m\n\u001b[90m\u001b[39m\n\u001b[90m\u001b[90m \u001b[39m\u001b[90m\u001b[39m\n\u001b[90m\u001b[90m |\u001b[39m\u001b[90m \u001b[36mimport\u001b[39m\u001b[90m \u001b[32m\"./node_modules/\u001b[1mexpo\u001b[22m/AppEntry\"\u001b[39m\u001b[90m\u001b[39m\n","filename":null,"targetModuleName":"./src/components/Homepage","originModulePath":"App.tsx"}
+{"_e":"metro:bundling:failed","_t":1779515628065,"id":null,"message":"Unable to resolve \"./src/components/Homepage\" from \"App.tsx\"\n  11 | import Constants from 'expo-constants';\n  12 |\n> 13 | import { Homepage } from './src/components/Homepage';\n     |                           ^\n  14 | import { Header } from './src/components/Header';\n  15 | import { ChatContainer } from './src/components/ChatContainer';\n  16 | import { ChatSidebar } from './src/components/ChatSidebar';","importStack":"\u001b[1mImport stack:\u001b[22m\n\n\u001b[90m \u001b[39mApp.tsx\n\u001b[90m |\u001b[39m \u001b[36mimport\u001b[39m \u001b[32m\"./src/components/Homepage\"\u001b[39m\n\u001b[90m\u001b[39m\n\u001b[90m\u001b[90m \u001b[39m\u001b[90mnode_modules\\expo\\AppEntry.js\u001b[39m\n\u001b[90m\u001b[90m |\u001b[39m\u001b[90m \u001b[36mimport\u001b[39m\u001b[90m \u001b[32m\"../../App\"\u001b[39m\u001b[90m\u001b[39m\n\u001b[90m\u001b[39m\n\u001b[90m\u001b[90m \u001b[39m\u001b[90m\u001b[39m\n\u001b[90m\u001b[90m |\u001b[39m\u001b[90m \u001b[36mimport\u001b[39m\u001b[90m \u001b[32m\"./node_modules/\u001b[1mexpo\u001b[22m/AppEntry\"\u001b[39m\u001b[90m\u001b[39m\n","filename":null,"targetModuleName":"./src/components/Homepage","originModulePath":"App.tsx"}
+{"_e":"metro:bundling:failed","_t":1779515640554,"id":null,"message":"Unable to resolve \"./src/components/Homepage\" from \"App.tsx\"\n  11 | import Constants from 'expo-constants';\n  12 |\n> 13 | import { Homepage } from './src/components/Homepage';\n     |                           ^\n  14 | import { Header } from './src/components/Header';\n  15 | import { ChatContainer } from './src/components/ChatContainer';\n  16 | import { ChatSidebar } from './src/components/ChatSidebar';","importStack":"\u001b[1mImport stack:\u001b[22m\n\n\u001b[90m \u001b[39mApp.tsx\n\u001b[90m |\u001b[39m \u001b[36mimport\u001b[39m \u001b[32m\"./src/components/Homepage\"\u001b[39m\n\u001b[90m\u001b[39m\n\u001b[90m\u001b[90m \u001b[39m\u001b[90mnode_modules\\expo\\AppEntry.js\u001b[39m\n\u001b[90m\u001b[90m |\u001b[39m\u001b[90m \u001b[36mimport\u001b[39m\u001b[90m \u001b[32m\"../../App\"\u001b[39m\u001b[90m\u001b[39m\n\u001b[90m\u001b[39m\n\u001b[90m\u001b[90m \u001b[39m\u001b[90m\u001b[39m\n\u001b[90m\u001b[90m |\u001b[39m\u001b[90m \u001b[36mimport\u001b[39m\u001b[90m \u001b[32m\"./node_modules/\u001b[1mexpo\u001b[22m/AppEntry\"\u001b[39m\u001b[90m\u001b[39m\n","filename":null,"targetModuleName":"./src/components/Homepage","originModulePath":"App.tsx"}
+{"_e":"metro:client_log","_t":1779515645042,"level":"error","data":["[ReferenceError: Property 'Homepage' doesn't exist]"]}
+{"_e":"metro:client_log","_t":1779515704231,"level":"error","data":["[ReferenceError: Property 'Sparkles' doesn't exist]"]}
+{"_e":"metro:client_log","_t":1779515717831,"level":"error","data":["[ReferenceError: Property 'showHomepage' doesn't exist]"]}
+{"_e":"metro:client_log","_t":1779515724106,"level":"error","data":["[ReferenceError: Property 'showHomepage' doesn't exist]"]}
+{"_e":"metro:bundling:started","_t":1779515880680,"id":"o","platform":"android","environment":null,"entry":"node_modules\\expo\\AppEntry.js"}
+{"_e":"metro:bundling:progress","_t":1779515880680,"id":"o","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:done","_t":1779515880800,"id":"o","total":1,"ms":120.0661}
+{"_e":"metro:client_log","_t":1779515895953,"level":"warn","data":["SafeAreaView has been deprecated and will be removed in a future release. Please use 'react-native-safe-area-context' instead. See https://github.com/AppAndFlow/react-native-safe-area-context"]}
+{"_e":"metro:client_log","_t":1779517256610,"level":"error","data":["[ReferenceError: Property 'FallingPatternBackground' doesn't exist]"]}
+{"_e":"metro:client_log","_t":1779517640433,"level":"error","data":["[TypeError: Cannot read property '__getValue' of undefined]"]}
+{"_e":"metro:client_log","_t":1779517709187,"level":"error","data":["[ReferenceError: Property 'AnimatedLine' doesn't exist]"]}
+{"_e":"metro:client_log","_t":1779517775852,"level":"error","data":["[ReferenceError: Property 'AnimatedLine' doesn't exist]"]}
+{"_e":"metro:client_log","_t":1779518464785,"level":"warn","data":["Require cycle: src/components/FallingPatternBackground.tsx -> src/components/FallingPatternBackground.tsx\n\nRequire cycles are allowed, but can result in uninitialized values. Consider refactoring to remove the need for a cycle."]}
+{"_e":"metro:client_log","_t":1779518465027,"level":"error","data":["[Error: Element type is invalid: expected a string (for built-in components) or a class/function (for composite components) but got: undefined. You likely forgot to export your component from the file it's defined in, or you might have mixed up default and named imports.\n\nCheck the render method of `OnboardingScreen`.]"]}
+{"_e":"metro:bundling:started","_t":1779522673801,"id":"17","platform":"android","environment":null,"entry":"node_modules\\expo\\AppEntry.js"}
+{"_e":"metro:bundling:progress","_t":1779522673802,"id":"17","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:progress","_t":1779522673805,"id":"17","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:done","_t":1779522674077,"id":"17","total":1,"ms":274.5048}
+{"_e":"metro:bundling:started","_t":1779522852997,"id":"18","platform":"android","environment":null,"entry":"node_modules\\expo\\AppEntry.js"}
+{"_e":"metro:bundling:progress","_t":1779522852998,"id":"18","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:done","_t":1779522853145,"id":"18","total":1,"ms":147.0244}
+{"_e":"metro:client_log","_t":1779522930366,"level":"error","data":["[ReferenceError: Property 'LoadingDot' doesn't exist]"]}
+{"_e":"metro:client_log","_t":1779523032091,"level":"error","data":["[ReferenceError: Property 'LoadingDot' doesn't exist]"]}
+{"_e":"metro:client_log","_t":1779523043696,"level":"error","data":["[ReferenceError: Property 'LoadingDot' doesn't exist]"]}
+{"_e":"metro:bundling:started","_t":1779523064178,"id":"1f","platform":"android","environment":null,"entry":"node_modules\\expo\\AppEntry.js"}
+{"_e":"metro:bundling:progress","_t":1779523064178,"id":"1f","progress":0,"total":1,"current":0}
+{"_e":"metro:bundling:done","_t":1779523064267,"id":"1f","total":1,"ms":89.2894}

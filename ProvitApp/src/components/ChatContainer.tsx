@@ -33,226 +33,109 @@ interface ChatContainerProps {
   roastLevel?: number;
 }
 
-export const ChatContainer: React.FC<
-  ChatContainerProps
-> = ({
+export const ChatContainer: React.FC<ChatContainerProps> = ({
   messages,
   onSendMessage,
   isLoading,
   mode,
 }) => {
-  const scrollViewRef =
-    useRef<ScrollView>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
 
-  const [showScrollButton, setShowScrollButton] =
-    useState(false);
-
-  const floatingAnim =
-    useRef(new Animated.Value(0)).current;
+  const floatingAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
-        Animated.timing(floatingAnim, {
-          toValue: -4,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
-
-        Animated.timing(floatingAnim, {
-          toValue: 0,
-          duration: 1200,
-          useNativeDriver: true,
-        }),
+        Animated.timing(floatingAnim, { toValue: -4, duration: 1200, useNativeDriver: true }),
+        Animated.timing(floatingAnim, { toValue: 0, duration: 1200, useNativeDriver: true }),
       ])
     ).start();
   }, []);
 
   useEffect(() => {
     setTimeout(() => {
-      scrollViewRef.current?.scrollToEnd({
-        animated: true,
-      });
+      scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 80);
   }, [messages, isLoading]);
 
   const scrollToBottom = () => {
-    scrollViewRef.current?.scrollToEnd({
-      animated: true,
-    });
-
+    scrollViewRef.current?.scrollToEnd({ animated: true });
     setShowScrollButton(false);
   };
 
-  const handleScroll = (
-    event: NativeSyntheticEvent<NativeScrollEvent>
-  ) => {
-    const {
-      layoutMeasurement,
-      contentOffset,
-      contentSize,
-    } = event.nativeEvent;
-
-    const paddingToBottom = 80;
-
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
     const isNearBottom =
-      layoutMeasurement.height +
-        contentOffset.y >=
-      contentSize.height -
-        paddingToBottom;
-
+      layoutMeasurement.height + contentOffset.y >= contentSize.height - 80;
     setShowScrollButton(!isNearBottom);
   };
 
   const getEmptyState = () => {
     if (mode === 'convince-ai') {
       return {
-        title:
-          'Convince ProvIt you are human',
-
-        description:
-          'Challenge the model, debate logically, and test conversational reasoning.',
+        title: 'Convince ProvIt you are human',
+        description: 'Challenge the model, debate logically, and test conversational reasoning.',
       };
     }
-
     return {
-      title:
-        'Start the conversation',
-
-      description:
-        'Ask questions, explore ideas, or continue previous discussions.',
+      title: 'Start the conversation',
+      description: 'Ask questions, explore ideas, or continue previous discussions.',
     };
   };
 
-  const emptyState =
-    getEmptyState();
+  const emptyState = getEmptyState();
+  const visibleMessages = messages.filter(
+    m => m && typeof m.content === 'string' && m.content.trim().length > 0
+  );
 
   return (
     <View style={styles.container}>
-      <View
-        style={
-          styles.messagesWrapper
-        }
-      >
-        {messages.filter(
-          m =>
-            m &&
-            typeof m.content ===
-              'string' &&
-            m.content
-              .trim()
-              .length > 0
-        ).length === 0 &&
-        !isLoading ? (
-          <View
-            style={
-              styles.emptyState
-            }
-          >
-            <Text
-              style={
-                styles.emptyTitle
-              }
-            >
-              {emptyState.title}
-            </Text>
-
-            <Text
-              style={
-                styles.emptyDescription
-              }
-            >
-              {
-                emptyState.description
-              }
-            </Text>
+      <View style={styles.messagesWrapper}>
+        {visibleMessages.length === 0 && !isLoading ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>{emptyState.title}</Text>
+            <Text style={styles.emptyDescription}>{emptyState.description}</Text>
           </View>
         ) : (
           <>
             <ScrollView
               ref={scrollViewRef}
-              style={
-                styles.scrollView
-              }
-              contentContainerStyle={
-                styles.content
-              }
-              showsVerticalScrollIndicator={
-                false
-              }
+              style={styles.scrollView}
+              contentContainerStyle={styles.content}
+              showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
-              onScroll={
-                handleScroll
-              }
-              scrollEventThrottle={
-                16
-              }
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
             >
-              {/* REAL MESSAGES ONLY */}
-              {messages
-                .filter(
-                  message =>
-                    message &&
-                    typeof message.content ===
-                      'string' &&
-                    message.content
-                      .trim()
-                      .length >
-                      0
-                )
-                .map(message => (
-                  <ChatMessage
-                    key={
-                      message.id
-                    }
-                    message={
-                      message
-                    }
-                    mode={mode}
-                  />
-                ))}
-
-              {/* IMMERSIVE AI TYPING */}
-              {isLoading && (
+              {visibleMessages.map(message => (
                 <ChatMessage
+                  key={message.id}
+                  message={message}
                   mode={mode}
-                  isTyping={
-                    true
-                  }
+                  onReply={setReplyTo}
                 />
-              )}
+              ))}
+
+              {/* AI typing indicator */}
+              {isLoading && <ChatMessage mode={mode} isTyping={true} />}
             </ScrollView>
 
-            {/* Scroll To Bottom */}
+            {/* Scroll to bottom button */}
             {showScrollButton && (
               <Animated.View
                 style={[
                   styles.scrollButtonWrapper,
-                  {
-                    transform: [
-                      {
-                        translateY:
-                          floatingAnim,
-                      },
-                    ],
-                  },
+                  { transform: [{ translateY: floatingAnim }] },
                 ]}
               >
                 <TouchableOpacity
-                  activeOpacity={
-                    0.9
-                  }
-                  onPress={
-                    scrollToBottom
-                  }
-                  style={
-                    styles.scrollButton
-                  }
+                  activeOpacity={0.9}
+                  onPress={scrollToBottom}
+                  style={styles.scrollButton}
                 >
-                  <ArrowDown
-                    size={18}
-                    color="#ffffff"
-                  />
+                  <ArrowDown size={18} color="#ffffff" />
                 </TouchableOpacity>
               </Animated.View>
             )}
@@ -261,100 +144,76 @@ export const ChatContainer: React.FC<
       </View>
 
       <ChatInput
-        onSendMessage={
-          onSendMessage
-        }
+        onSendMessage={onSendMessage}
         isLoading={isLoading}
-        placeholder={
-          mode ===
-          'convince-ai'
-            ? 'Try convincing ProvIt...'
-            : 'Message ProvIt...'
-        }
+        placeholder={mode === 'convince-ai' ? 'Try convincing ProvIt...' : 'Message ProvIt...'}
+        replyTo={replyTo}
+        onCancelReply={() => setReplyTo(null)}
       />
     </View>
   );
 };
 
-const styles =
-  StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor:
-        '#020617',
-    },
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#020617',
+  },
 
-    messagesWrapper: {
-      flex: 1,
-      position:
-        'relative',
-    },
+  messagesWrapper: {
+    flex: 1,
+    position: 'relative',
+  },
 
-    scrollView: {
-      flex: 1,
-    },
+  scrollView: {
+    flex: 1,
+  },
 
-    content: {
-      paddingTop: 18,
-      paddingBottom: 24,
-    },
+  content: {
+    paddingTop: 18,
+    paddingBottom: 24,
+  },
 
-    emptyState: {
-      flex: 1,
-      alignItems:
-        'center',
-      justifyContent:
-        'center',
-      paddingHorizontal: 32,
-    },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
 
-    emptyTitle: {
-      fontSize: 26,
-      fontWeight: '700',
-      color: '#ffffff',
-      textAlign: 'center',
-      marginBottom: 12,
-    },
+  emptyTitle: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#ffffff',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
 
-    emptyDescription: {
-      fontSize: 15,
-      color: '#94a3b8',
-      textAlign: 'center',
-      lineHeight: 24,
-      maxWidth: 320,
-    },
+  emptyDescription: {
+    fontSize: 15,
+    color: '#94a3b8',
+    textAlign: 'center',
+    lineHeight: 24,
+    maxWidth: 320,
+  },
 
-    scrollButtonWrapper: {
-      position:
-        'absolute',
-      bottom: 18,
-      right: 18,
-    },
+  scrollButtonWrapper: {
+    position: 'absolute',
+    bottom: 18,
+    right: 18,
+  },
 
-    scrollButton: {
-      width: 42,
-      height: 42,
-      borderRadius: 999,
-      backgroundColor:
-        '#2563eb',
-
-      alignItems:
-        'center',
-
-      justifyContent:
-        'center',
-
-      shadowColor: '#000',
-
-      shadowOffset: {
-        width: 0,
-        height: 4,
-      },
-
-      shadowOpacity: 0.2,
-
-      shadowRadius: 10,
-
-      elevation: 5,
-    },
-  });
+  scrollButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 999,
+    backgroundColor: '#2563eb',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 5,
+  },
+});

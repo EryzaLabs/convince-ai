@@ -2,18 +2,25 @@ import { useState, useCallback, useEffect } from 'react';
 import { ChatSession, ChatMode } from '../types/chat';
 import { openAIService } from '../services/openai';
 import { chatStorage, generateId } from '../services/chatStorage';
+import { detectWin, calcStars } from '../services/winDetection';
 
 interface ChatState {
   currentChat: ChatSession | null;
   chatHistory: ChatSession[];
   isLoading: boolean;
+  winDetected: boolean;
+  winStars: number;
+  isHistoryLoaded: boolean;
 }
 
 export const useChat = () => {
   const [state, setState] = useState<ChatState>({
     currentChat: null,
     chatHistory: [],
-    isLoading: false
+    isLoading: false,
+    winDetected: false,
+    winStars: 0,
+    isHistoryLoaded: false,
   });
 
   // Load chat history from AsyncStorage on initialization
@@ -22,7 +29,8 @@ export const useChat = () => {
       const savedHistory = await chatStorage.loadChatSessions();
       setState(prev => ({
         ...prev,
-        chatHistory: savedHistory
+        chatHistory: savedHistory,
+        isHistoryLoaded: true,
       }));
     };
     loadSavedHistory();
@@ -34,30 +42,57 @@ export const useChat = () => {
       chatStorage.saveChatSessions(state.chatHistory);
     }
   }, [state.chatHistory]);
-  const createNewChat = useCallback((mode: ChatMode, roastLevel: number = 5) => {
-    const now = new Date();
-    const newChat: ChatSession = {
-      id: `chat_${now.getTime()}_${generateId()}`,
-      name: mode === 'convince-ai' ? '🤖 Convincing AI...' : '👤 Testing Human...', // Temporary name while generating
-      messages: [],
-      mode,
-      roastLevel,
-      createdAt: now,
-      updatedAt: now
-    };
 
-    setState(prev => ({
-      ...prev,
-      currentChat: newChat,
-      chatHistory: [newChat, ...prev.chatHistory]
-    }));
-    return newChat;
-  }, []);
+  const createNewChat = useCallback((mode: ChatMode, roastLevel: number = 5, level: number = 1) => {
+    let result: ChatSession | null = null;
+
+    setState(prev => {
+      // Always check the freshest chatHistory here (no stale closure)
+      const existingEmpty = prev.chatHistory.find(
+        c =>
+          c.mode === mode &&
+          c.level === level &&
+          c.messages.length === 0 &&
+          !c.levelCompleted
+      );
+
+      if (existingEmpty) {
+        result = existingEmpty;
+        return { ...prev, currentChat: existingEmpty, winDetected: false, winStars: 0 };
+      }
+
+      const now = new Date();
+      const newChat: ChatSession = {
+        id: `chat_${now.getTime()}_${generateId()}`,
+        name: mode === 'convince-ai' ? '🤖 Convincing AI...' : '👤 Testing Human...',
+        messages: [],
+        mode,
+        roastLevel,
+        level,
+        levelCompleted: false,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      result = newChat;
+      return {
+        ...prev,
+        currentChat: newChat,
+        chatHistory: [newChat, ...prev.chatHistory],
+        winDetected: false,
+        winStars: 0,
+      };
+    });
+
+    return result;
+  }, []); // empty deps OK — reads prev (fresh) inside setState
 
   const selectChat = useCallback((chat: ChatSession) => {
     setState(prev => ({
       ...prev,
-      currentChat: chat
+      currentChat: chat,
+      winDetected: false,
+      winStars: 0,
     }));
   }, []);
 
@@ -133,14 +168,10 @@ export const useChat = () => {
       };
     });
   }, []);
+
   const updateChatName = useCallback(async (chatId: string, firstMessage: string, mode: ChatMode) => {
     try {
-      console.log('🔄 Generating chat name for:', firstMessage.slice(0, 50));
-      
-      // Generate a smart chat name based on the first message and mode
       const generatedName = await openAIService.generateChatName(firstMessage, mode);
-      
-      console.log('✅ Generated chat name:', generatedName);
       
       setState(prev => {
         const updatedHistory = prev.chatHistory.map(chat => 
@@ -159,7 +190,6 @@ export const useChat = () => {
       });
     } catch (error) {
       console.error('❌ Failed to update chat name:', error);
-      // Fallback to a simple name
       const fallbackName = mode === 'convince-ai' 
         ? `🤖 AI Chat - ${new Date().toLocaleTimeString()}` 
         : `👤 Human Test - ${new Date().toLocaleTimeString()}`;
@@ -183,10 +213,10 @@ export const useChat = () => {
   }, []);
 
   const sendUserMessage = useCallback(async (content: string) => {
-    // Get current state snapshot
     const currentState = state;
     
     if (currentState.isLoading || !currentState.currentChat) return;
+    if (currentState.winDetected) return; // stop accepting messages after a win
 
     const currentChatSnapshot = currentState.currentChat;
     const isFirstMessage = currentChatSnapshot.messages.length === 0;
@@ -204,7 +234,6 @@ export const useChat = () => {
     }
 
     try {
-      // Prepare conversation history for backend
       const conversationHistory = [
         ...currentChatSnapshot.messages.map(msg => ({
           role: msg.sender === 'user' ? 'user' as const : 'assistant' as const,
@@ -213,14 +242,42 @@ export const useChat = () => {
         { role: 'user' as const, content }
       ];
 
-      const aiResponse = await openAIService.sendMessage(
+      const { message: aiResponse, verdict } = await openAIService.sendMessage(
         conversationHistory, 
         currentChatSnapshot.mode, 
-        currentChatSnapshot.roastLevel
+        currentChatSnapshot.roastLevel,
+        currentChatSnapshot.level
       );
       
       // Update the typing message with actual response
       updateMessage(typingId, aiResponse, false);
+
+      // ── Win Detection ─────────────────────────────────────
+      const won = detectWin(aiResponse, currentChatSnapshot.mode, currentChatSnapshot.level, verdict);
+
+      if (won) {
+        // Count how many user messages were sent (including this one)
+        const userMsgCount = currentChatSnapshot.messages.filter(m => m.sender === 'user').length + 1;
+        const stars = calcStars(userMsgCount);
+
+        // Mark session as level completed
+        setState(prev => {
+          if (!prev.currentChat) return prev;
+
+          const completedChat = { ...prev.currentChat, levelCompleted: true };
+          const updatedHistory = prev.chatHistory.map(c =>
+            c.id === completedChat.id ? completedChat : c
+          );
+
+          return {
+            ...prev,
+            currentChat: completedChat,
+            chatHistory: updatedHistory,
+            winDetected: true,
+            winStars: stars,
+          };
+        });
+      }
     } catch (error) {
       const errorMessage = error instanceof Error && error.message.includes('backend') 
         ? "Oops! Can't reach the backend server. Make sure it's running!"
@@ -232,6 +289,7 @@ export const useChat = () => {
       setState(prev => ({ ...prev, isLoading: false }));
     }
   }, [state, addMessage, updateMessage, updateChatName]);
+
   const updateChatSettings = useCallback((chatId: string, settings: { mode?: ChatMode; roastLevel?: number }) => {
     setState(prev => {
       const updatedHistory = prev.chatHistory.map(chat => 
@@ -273,6 +331,10 @@ export const useChat = () => {
     });
   }, []);
 
+  const dismissWin = useCallback(() => {
+    setState(prev => ({ ...prev, winDetected: false, winStars: 0 }));
+  }, []);
+
   return {
     ...state,
     // Chat management
@@ -284,6 +346,8 @@ export const useChat = () => {
     // Settings
     updateChatSettings,
     // Utilities
-    clearCurrentChat
+    clearCurrentChat,
+    // Win state
+    dismissWin,
   };
 };

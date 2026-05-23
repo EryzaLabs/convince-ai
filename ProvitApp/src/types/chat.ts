@@ -14,6 +14,8 @@ export interface ChatSession {
   messages: Message[];
   mode: ChatMode;
   roastLevel: number;
+  level: number;
+  levelCompleted?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -22,4 +24,29 @@ export interface ChatState {
   currentChat: ChatSession | null;
   chatHistory: ChatSession[];
   isLoading: boolean;
+}
+
+export interface LevelConfig {
+  level: number;
+  title: string;
+  description: string;
+  difficulty: 'easy' | 'medium' | 'hard' | 'extreme';
+  roastLevel: number;
+  icon: string;
+  color: string;
+  accentColor: string;
+  winKeywords: string[];
+  aiPersonaHint: string;
+}
+
+export interface ModeProgress {
+  unlockedLevels: number[];
+  completedLevels: number[];
+}
+
+export interface PlayerProgress {
+  convinceAi: ModeProgress;
+  proveHuman: ModeProgress;
+  totalWins: number;
+  hasSeenOnboarding: boolean;
 }

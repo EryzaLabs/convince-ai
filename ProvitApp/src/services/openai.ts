@@ -2,11 +2,17 @@ import { ChatMode } from '../types/chat';
 
 const API_BASE_URL = 'https://convince.dotverse.tech/api';
 
+export interface ChatResponse {
+  message: string;
+  verdict?: 'won' | 'ongoing';
+}
+
 export const sendMessage = async (
   messages: Array<{role: 'user' | 'assistant' | 'system', content: string}>,
   mode: ChatMode,
-  roastLevel: number
-) => {
+  roastLevel: number,
+  level: number = 1
+): Promise<ChatResponse> => {
   try {
     const response = await fetch(`${API_BASE_URL}/chat`, {
       method: 'POST',
@@ -16,7 +22,8 @@ export const sendMessage = async (
       body: JSON.stringify({
         messages,
         mode,
-        roastLevel
+        roastLevel,
+        level,
       }),
     });
 
@@ -30,7 +37,10 @@ export const sendMessage = async (
       throw new Error(data.error || 'Failed to get response from server');
     }
 
-    return data.message;
+    return {
+      message: data.message,
+      verdict: data.verdict, // 'won' | 'ongoing' | undefined
+    };
   } catch (error) {
     console.error('Backend API Error:', error);
     
@@ -137,14 +147,15 @@ export class OpenAIService {
   async sendMessage(
     messages: Array<{role: 'user' | 'assistant' | 'system'; content: string}>, 
     mode: ChatMode, 
-    roastLevel: number = 5
-  ): Promise<string> {
+    roastLevel: number = 5,
+    level: number = 1
+  ): Promise<ChatResponse> {
     try {
-      return await sendMessage(messages, mode, roastLevel);
+      return await sendMessage(messages, mode, roastLevel, level);
     } catch (error) {
       console.error('OpenAI Service Error:', error);
       // Return a mock response as fallback
-      return this.getMockResponse(mode, roastLevel);
+      return { message: this.getMockResponse(mode, roastLevel) };
     }
   }
 

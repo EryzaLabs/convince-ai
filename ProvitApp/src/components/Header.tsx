@@ -35,6 +35,11 @@ interface HeaderProps {
   mode?: ChatMode;
 
   roastLevel?: number;
+
+  gameLevel?: number;
+
+  onBackToHome?: () => void;
+  onShowSettings?: () => void;
 }
 
 export const Header: React.FC<
@@ -45,6 +50,9 @@ export const Header: React.FC<
   messages = [],
   mode = 'convince-ai',
   roastLevel = 5,
+  gameLevel,
+  onBackToHome,
+  onShowSettings,
 }) => {
   const [showModal, setShowModal] =
     useState(false);
@@ -105,20 +113,28 @@ export const Header: React.FC<
               ProvIt
             </Text>
 
-            <Text
-              style={styles.subtitle}
-            >
-              {mode ===
-              'convince-ai'
-                ? 'Convince AI'
-                : 'Prove Human'}
-            </Text>
+            <View style={styles.subtitleRow}>
+              <Text
+                style={styles.subtitle}
+              >
+                {mode ===
+                'convince-ai'
+                  ? 'Convince AI'
+                  : 'Prove Human'}
+              </Text>
+              {gameLevel !== undefined && (
+                <View style={styles.levelPill}>
+                  <Text style={styles.levelPillText}>Lv.{gameLevel}</Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
 
         {/* Right */}
         <View style={styles.right}>
-          {onRoastLevelChange && (
+          {/* Only show roast slider if NOT in a level game */}
+          {onRoastLevelChange && gameLevel === undefined && (
             <TouchableOpacity
               onPress={openModal}
               style={
@@ -330,10 +346,30 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
 
+  subtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 2,
+  },
+
   subtitle: {
     fontSize: 12,
     color: '#64748b',
-    marginTop: 2,
+  },
+
+  levelPill: {
+    backgroundColor: '#1e3a8a',
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+
+  levelPillText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#93c5fd',
+    letterSpacing: 0.5,
   },
 
   levelButton: {

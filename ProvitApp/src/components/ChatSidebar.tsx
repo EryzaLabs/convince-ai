@@ -18,10 +18,11 @@ import {
   UserCheck,
   Trash2,
   X,
+  Sparkles,
 } from 'lucide-react-native';
 
 import {
-  Chat,
+  ChatSession,
   ChatMode,
 } from '../types/chat';
 
@@ -31,16 +32,16 @@ const SCREEN_WIDTH =
 const SIDEBAR_WIDTH = 290;
 
 interface ChatSidebarProps {
-  chatHistory: Chat[];
+  chatHistory: ChatSession[];
 
-  currentChat: Chat | null;
+  currentChat: ChatSession | null;
 
   onNewChat: (
     mode: ChatMode
   ) => void;
 
   onSelectChat: (
-    chat: Chat
+    chat: ChatSession
   ) => void;
 
   onDeleteChat: (
@@ -50,6 +51,8 @@ interface ChatSidebarProps {
   isVisible: boolean;
 
   onClose: () => void;
+
+  onShowOnboarding: () => void;
 }
 
 export const ChatSidebar: React.FC<
@@ -62,6 +65,7 @@ export const ChatSidebar: React.FC<
   onDeleteChat,
   isVisible,
   onClose,
+  onShowOnboarding,
 }) => {
   const translateX = React.useRef(
     new Animated.Value(
@@ -214,7 +218,7 @@ export const ChatSidebar: React.FC<
     );
 
   const getPreview = (
-    chat: Chat
+    chat: ChatSession
   ) => {
     if (
       !chat.messages ||
@@ -477,6 +481,21 @@ export const ChatSidebar: React.FC<
           </ScrollView>
         </View>
 
+        {/* View Onboarding */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={styles.onboardingLinkButton}
+          onPress={() => {
+            onShowOnboarding();
+            onClose();
+          }}
+        >
+          <Sparkles size={16} color="#94a3b8" />
+          <Text style={styles.onboardingLinkText}>
+            View Onboarding
+          </Text>
+        </TouchableOpacity>
+
         {/* Floating Button */}
         <TouchableOpacity
           activeOpacity={0.9}
@@ -718,5 +737,75 @@ const styles = StyleSheet.create({
 
     fontSize: 14,
     fontWeight: '700',
+  },
+
+  homeButton: {
+  flexDirection: 'row',
+
+  alignItems: 'center',
+
+  backgroundColor: '#0f172a',
+
+  borderRadius: 16,
+
+  borderWidth: 1,
+
+  borderColor: '#1e293b',
+
+  paddingHorizontal: 14,
+
+  paddingVertical: 14,
+},
+
+homeIconWrapper: {
+  width: 40,
+  height: 40,
+
+  borderRadius: 12,
+
+  backgroundColor: '#2563eb',
+
+  alignItems: 'center',
+
+  justifyContent: 'center',
+
+  marginRight: 12,
+},
+
+homeContent: {
+  flex: 1,
+},
+
+homeTitle: {
+  color: '#ffffff',
+
+  fontSize: 15,
+
+  fontWeight: '700',
+
+  marginBottom: 2,
+},
+
+homeSubtitle: {
+    color: '#94a3b8',
+
+    fontSize: 12,
+  },
+
+  onboardingLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 8,
+    backgroundColor: '#1e293b',
+  },
+
+  onboardingLinkText: {
+    color: '#94a3b8',
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 10,
   },
 });

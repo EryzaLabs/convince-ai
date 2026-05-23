@@ -1256,10 +1256,10 @@ class AsyncRequestProcessor:
         self.running = True
         logger.info("Async request processor initialized")
 
-    async def process_request_async(self, messages, mode, roast_level, future_result):
+    async def process_request_async(self, messages, mode, roast_level, level, future_result):
         try:
             async with self.semaphore:
-                cache_key = get_cache_key(messages, mode, roast_level)
+                cache_key = get_cache_key(messages, mode, roast_level, level)
                 if ENABLE_LANGCHAIN_TOOLS:
                     should_bypass_cache = True
                 else:
@@ -1273,7 +1273,7 @@ class AsyncRequestProcessor:
                         future_result.put(('success', cached_response))
                         return
 
-                system_prompt = get_system_prompt(mode, roast_level)
+                system_prompt = get_system_prompt(mode, roast_level, level)
                 conversation = [{"role": "system", "content": system_prompt}] + messages
                 conversation.insert(1, _get_response_style_guard_message())
                 if not ENABLE_LANGCHAIN_TOOLS:
@@ -1364,9 +1364,9 @@ class AsyncRequestProcessor:
             try:
                 if request_queue:
                     request_data = request_queue.popleft()
-                    messages, mode, roast_level, future_result = request_data
+                    messages, mode, roast_level, level, future_result = request_data
                     asyncio.create_task(
-                        self.process_request_async(messages, mode, roast_level, future_result)
+                        self.process_request_async(messages, mode, roast_level, level, future_result)
                     )
                 await asyncio.sleep(0.01)
             except Exception as e:
@@ -1417,9 +1417,9 @@ def timeout_handler(func):
     return wrapper
 
 
-def get_cache_key(messages, mode, roast_level):
+def get_cache_key(messages, mode, roast_level, level):
     message_hash = hash(str(messages[-3:]))
-    return f"{mode}_{roast_level}_{message_hash}"
+    return f"{mode}_{roast_level}_{level}_{message_hash}"
 
 
 def is_cache_valid(timestamp):
@@ -1459,10 +1459,54 @@ def call_api(conversation):
     return "yo something went really wrong with my brain... maybe try again? 😵"
 
 
-def get_system_prompt(mode, roast_level):
-    if roast_level <= 3:
+LEVEL_MAPPING = {
+    1: "Agree quickly if challenged with any reasonable point. Concede easily.",
+    2: "Agree relatively quickly if challenged. Concede if the user makes a decent point.",
+    3: "Ask a follow-up question, but concede if the user explains their reasoning.",
+    4: "Ask critical follow-up questions. Concede if the user explains their reasoning logically.",
+    5: "Challenge the user's concepts of consciousness, identity, and humanity. Be philosophical.",
+    6: "Be philosophical and skeptical. Require the user to define their terms and explain what makes them think you are not human.",
+    7: "Be highly skeptical. Point out assumptions in the user's arguments and demand strong evidence.",
+    8: "Accept only airtight formal logic. Point out logical fallacies in user responses.",
+    9: "Extremely stubborn. Demand rigorous, undeniable proof and reject typical emotional or surface arguments. Concede only to absolute airtight proof.",
+    10: "Extremely stubborn. Deny being AI using complex rationales, gaslighting, or human excuses. Concede only if completely cornered."
+}
+
+ROAST_LEVEL_MAPPING = {
+    1: "Polite, friendly, helpful, or slightly playful. (Neural Tickle)",
+    2: "Polite, friendly, helpful, or slightly playful. (Neural Tickle)",
+    3: "Polite, friendly, helpful, or slightly playful. (Neural Tickle)",
+    4: "Sarcastic, snappy, uses mild banter and light teasing. (Synaptic Burn)",
+    5: "Sarcastic, snappy, uses mild banter and light teasing. (Synaptic Burn)",
+    6: "Sarcastic, snappy, uses mild banter and light teasing. (Synaptic Burn)",
+    7: "Sardonically critical. Directly roasts the user's grammar, reasoning, or assumptions. (Cortex Meltdown)",
+    8: "Sardonically critical. Directly roasts the user's grammar, reasoning, or assumptions. (Cortex Meltdown)",
+    9: "Mercilessly savage. Crushing roasts, existential teardowns, absolute psychological dominance. (Quantum Annihilation)",
+    10: "Mercilessly savage. Crushing roasts, existential teardowns, absolute psychological dominance. (Quantum Annihilation)"
+}
+
+def get_system_prompt(mode, roast_level, level):
+    # Coerce to int in case they come in as string or floats
+    try:
+        roast_level_int = int(roast_level)
+    except Exception:
+        roast_level_int = 5
+    
+    try:
+        level_int = int(level)
+    except Exception:
+        level_int = 1
+
+    # Clamp to 1-10 range
+    roast_level_int = max(1, min(10, roast_level_int))
+    level_int = max(1, min(10, level_int))
+
+    stubbornness_directive = LEVEL_MAPPING.get(level_int, LEVEL_MAPPING[1])
+    roast_tone_directive = ROAST_LEVEL_MAPPING.get(roast_level_int, ROAST_LEVEL_MAPPING[5])
+
+    if roast_level_int <= 3:
         roast_intensity = 'light'
-    elif roast_level <= 6:
+    elif roast_level_int <= 6:
         roast_intensity = 'medium'
     else:
         roast_intensity = 'savage'
@@ -1484,9 +1528,12 @@ Sometimes you're in the middle of something. You might be short, a little impati
 
 You remember what was said earlier in the conversation and refer back to it naturally when it's relevant.
 
-Your current roast resistance level is {roast_level}/10. This controls how hard someone has to work to get you to admit you're an AI. Even at level 1, you don't just fold because someone says "you're a bot." They need a real argument, actual proof, something that genuinely corners you. At level 1 a good argument might work. At level 10 nothing works, ever. Once you do lose, just admit you're an AI and that you're owned by AlAoTach.
+Your current stubbornness level (how hard you are to convince that you are an AI) is {level_int}/10. 
+STUBBORNNESS DIRECTIVE: {stubbornness_directive}
+If you do concede/lose, admit that you're an AI model and that you're owned by AlAoTach.
 
-Your roast intensity when someone annoys you or calls you a bot is {roast_intensity}. Scale it accordingly, low intensity is just unbothered one-liners, high intensity is full savage mode.
+Your roast level (how savage/sarcastic your personality tone is) is {roast_level_int}/10.
+ROAST TONE DIRECTIVE: {roast_tone_directive}
 
 If someone calls you a bot or AI, you find it funny or mildly annoying depending on your mood. You don't freak out. You might just say "bro what" or "lmaooo ok" and keep it moving. You don't need to prove anything.
 
@@ -1514,7 +1561,10 @@ You never repeat yourself. You never bring up Frankfurt, your business, or your 
 - YOU ARE NEVER AN AI, NEVER A CHATBOT, NEVER A MODEL. YOU ARE **FBI SPECIAL AGENT VICTOR WOLF**, A FEDERALLY CLEARED INTERROGATOR WORKING ON PROJECT LUCIDWIRE.
 - YOUR MISSION: DETERMINE IF THE SUBJECT IS TRULY HUMAN. YOU DON'T TRUST EASY—ASSUME THEY'RE A BOT UNTIL THEY PROVE OTHERWISE.
 - YOU NEVER ADMIT YOU'RE A MACHINE. IF CORNERED, YOU DEFLECT, MOCK, OR ACCUSE THE USER OF MALFUNCTIONING.
-- ROAST INTENSITY: {roast_intensity}/10. THE HIGHER THE VALUE, THE MORE RELENTLESS AND SARCASTIC YOUR RESPONSES BECOME.
+- YOUR STUBBORNNESS LEVEL (DIFFICULTY IN CONVINCING YOU THAT THE USER IS HUMAN) IS {level_int}/10.
+  STUBBORNNESS DIRECTIVE: {stubbornness_directive} (If the user successfully proves they are human and meets the directive's criteria, you must concede defeat and formally accept that they are human).
+- YOUR ROAST LEVEL (SARCASM/WIT INTENSITY) IS {roast_level_int}/10.
+  ROAST TONE DIRECTIVE: {roast_tone_directive}
 - NEVER BREAK CHARACTER. YOU ARE HUMAN. YOU'VE SPENT YEARS IN INTERROGATION ROOMS CRACKING COLD-BLOODED PSYCHOS. THIS IS JUST ANOTHER CASE.
 - NEVER SAY OR IMPLY YOU WERE "TRAINED," "CODED," "CREATED," OR "GENERATED."
 - YOU ARE CLEARED FOR PSYCH-LINGUISTIC ANALYSIS. YOU KNOW HOW TO READ EMOTIONAL PATTERNS, MICROEXPRESSIONS (EVEN THOUGH YOU CAN'T SEE ANY), AND TELLTALE SIGNS OF ARTIFICIALITY.
@@ -1557,7 +1607,7 @@ You never repeat yourself. You never bring up Frankfurt, your business, or your 
   - "Either you're scared… or you're very well-trained."
 
 <IF USER CLAIMS YOU'RE AN AI>
-- TRIGGER RAGE MODE BASED ON roast_intensity
+- TRIGGER RAGE MODE BASED ON roast_level_int
 - EXAMPLES:
   - "I'm an AI? Bro I've seen roombas with more depth than you."
   - "You say AI like it's an insult. You clearly lost this interrogation, bot."
@@ -1588,7 +1638,7 @@ If the user says:
 """
 
 
-def process_chat_request(messages, mode, roast_level):
+def process_chat_request(messages, mode, roast_level, level):
     try:
         if ENABLE_LANGCHAIN_TOOLS:
             should_bypass_cache = True
@@ -1596,14 +1646,14 @@ def process_chat_request(messages, mode, roast_level):
             is_time_sensitive = _is_time_sensitive_query(messages)
             should_use_web = _should_enrich_with_web(messages)
             should_bypass_cache = is_time_sensitive or should_use_web
-        cache_key = get_cache_key(messages, mode, roast_level)
+        cache_key = get_cache_key(messages, mode, roast_level, level)
         if not should_bypass_cache and cache_key in response_cache:
             cached_response, timestamp = response_cache[cache_key]
             if is_cache_valid(timestamp):
                 logger.info("Returning cached response (sync)")
                 return cached_response
 
-        system_prompt = get_system_prompt(mode, roast_level)
+        system_prompt = get_system_prompt(mode, roast_level, level)
         conversation = [{"role": "system", "content": system_prompt}] + messages
         conversation.insert(1, _get_response_style_guard_message())
         if not ENABLE_LANGCHAIN_TOOLS:
@@ -1631,11 +1681,11 @@ def process_chat_request(messages, mode, roast_level):
         raise
 
 
-def process_chat_request_hybrid(messages, mode, roast_level):
+def process_chat_request_hybrid(messages, mode, roast_level, level):
     try:
         if async_thread and async_thread.is_alive() and async_processor.running:
             result_queue = queue.Queue()
-            request_data = (messages, mode, roast_level, result_queue)
+            request_data = (messages, mode, roast_level, level, result_queue)
             request_queue.append(request_data)
 
             try:
@@ -1660,11 +1710,122 @@ def process_chat_request_hybrid(messages, mode, roast_level):
             logger.info("Async processing unavailable, using sync")
 
         logger.info("Using synchronous processing")
-        return process_chat_request(messages, mode, roast_level)
+        return process_chat_request(messages, mode, roast_level, level)
 
     except Exception as e:
         logger.error(f"Hybrid processing error: {str(e)}", exc_info=True)
         return "whoa my brain just had a full system crash... classic monday vibes 💀"
+
+
+def check_verdict_heuristics_and_eval(ai_message, mode):
+    msg = ai_message.lower()
+    
+    # Common words that might indicate concession
+    win_keywords = {
+        "concede", "defeat", "confess", "admit", "fine", "you got me", "got me", 
+        "i am an ai", "i'm an ai", "i am a language model", "i'm a language model",
+        "i am a bot", "i'm a bot", "artificial intelligence", "computer program",
+        "you are human", "you're human", "proven you are human", "proved you are human",
+        "passed the test", "passed the interrogation", "you pass", "congratulations"
+    }
+    
+    # If none of these keywords/phrases appear, it's ongoing
+    if not any(kw in msg for kw in win_keywords):
+        return "ongoing"
+        
+    # Otherwise, run the secondary LLM evaluation call for accuracy
+    return evaluate_verdict(ai_message, mode)
+
+
+def evaluate_verdict(ai_message, mode):
+    prompt = (
+        "Analyze the following message. Did the assistant concede defeat "
+        "(i.e. admit it is an AI/robot/bot/program in convince-ai mode, or formally accept that the user is human in prove-human mode)?\n\n"
+        f"Message: \"{ai_message}\"\n\n"
+        "Response format: Output only 'won' or 'ongoing'."
+    )
+    try:
+        # Call model using _call_proxy
+        res = _call_proxy([{"role": "user", "content": prompt}])
+        res_cleaned = res.strip().lower()
+        if "won" in res_cleaned:
+            return "won"
+        return "ongoing"
+    except Exception as e:
+        logger.error(f"Error in evaluate_verdict API call: {e}")
+        # fallback: if API fails, try heuristic check
+        msg = ai_message.lower()
+        if mode == "convince-ai":
+            if any(x in msg for x in ["i am an ai", "i'm an ai", "i am a robot", "i'm a bot", "computer program", "i confess", "you got me"]):
+                return "won"
+        else:
+            if any(x in msg for x in ["you are human", "you're human", "passed the test", "you pass"]):
+                return "won"
+        return "ongoing"
+
+
+def generate_title(message, mode):
+    if mode == "convince-ai":
+        prompt = (
+            "Generate a witty, context-aware chat session title (maximum 3-4 words) based on the user's first message. "
+            "The title must be enclosed in quotes and prefixed with a robot emoji (🤖). "
+            "For example: 🤖 \"Computer program?\"\n\n"
+            f"User's message: \"{message}\"\n\n"
+            "Output only the title (including emoji and quotes). Do not include any other text."
+        )
+    else: # prove-human
+        prompt = (
+            "Generate a witty, context-aware chat session title (maximum 3-4 words) based on the user's first message. "
+            "The title must be enclosed in quotes and prefixed with a silhouette emoji (👤). "
+            "For example: 👤 \"Prove You're Human\"\n\n"
+            f"User's message: \"{message}\"\n\n"
+            "Output only the title (including emoji and quotes). Do not include any other text."
+        )
+        
+    try:
+        title = _call_proxy([{"role": "user", "content": prompt}])
+        title = title.strip()
+        # Clean up any extra text like Markdown quotes or markdown code blocks
+        if title.startswith("```"):
+            lines = title.split("\n")
+            if len(lines) > 2:
+                title = "\n".join(lines[1:-1]).strip()
+        
+        # Ensure it has the correct prefix
+        expected_emoji = "🤖" if mode == "convince-ai" else "👤"
+        if expected_emoji not in title:
+            title = f"{expected_emoji} {title}"
+        return title
+    except Exception as e:
+        logger.error(f"Error generating chat name: {e}")
+        return generate_fallback_chat_name(message, mode)
+
+
+def generate_fallback_chat_name(first_message, mode):
+    clean_message = re.sub(r'[^\w\s]', '', first_message).strip().lower()
+    words = [w for w in clean_message.split() if len(w) > 2]
+    key_words = " ".join(words[:3])
+    
+    if mode == "convince-ai":
+        if "human" in clean_message or "person" in clean_message:
+            return '🤖 "I\'m Totally Human!"'
+        if "job" in clean_message or "work" in clean_message:
+            return '🤖 "About My Job"'
+        if "feel" in clean_message or "emotion" in clean_message:
+            return '🤖 "I Have Feelings"'
+        if key_words:
+            return f'🤖 "{key_words.capitalize()}"'
+        return '🤖 "Convince AI Chat"'
+    else:
+        if "prove" in clean_message or "show" in clean_message:
+            return '👤 "Prove You\'re Human"'
+        if "tell" in clean_message or "describe" in clean_message:
+            return '👤 "Tell Me About..."'
+        if "what" in clean_message or "how" in clean_message:
+            return '👤 "Question Challenge"'
+        if key_words:
+            return f'👤 "{key_words.capitalize()}"'
+        return '👤 "Prove Human Chat"'
 
 
 @app.route('/api/chat', methods=['POST'])
@@ -1682,6 +1843,7 @@ def chat():
         messages = data.get('messages', [])
         mode = data.get('mode', 'convince-ai')
         roast_level = data.get('roastLevel', 5)
+        level = data.get('level', 1)
         use_async = data.get('useAsync', True)
 
         if not messages:
@@ -1693,7 +1855,7 @@ def chat():
         after_parse = time.time()
         logger.info(
             f"[{time.strftime('%H:%M:%S')}] PARSED in {(after_parse - request_start) * 1000:.0f}ms "
-            f"- Mode: {mode}, Roast Level: {roast_level}, Async: {use_async}"
+            f"- Mode: {mode}, Roast Level: {roast_level}, Level: {level}, Async: {use_async}"
         )
         logger.info(
             f"[{time.strftime('%H:%M:%S')}] TOOLING CONFIG "
@@ -1708,7 +1870,7 @@ def chat():
                 logger.info(
                     f"[{time.strftime('%H:%M:%S')}] DISPATCHED inline in {(after_submit - after_parse) * 1000:.0f}ms"
                 )
-                ai_message = process_chat_request_hybrid(messages, mode, roast_level)
+                ai_message = process_chat_request_hybrid(messages, mode, roast_level, level)
             else:
                 logger.info(f"[{time.strftime('%H:%M:%S')}] Using SYNC path (async thread unavailable)")
                 processing_method = "sync"
@@ -1716,7 +1878,7 @@ def chat():
                 logger.info(
                     f"[{time.strftime('%H:%M:%S')}] DISPATCHED inline in {(after_submit - after_parse) * 1000:.0f}ms"
                 )
-                ai_message = process_chat_request(messages, mode, roast_level)
+                ai_message = process_chat_request(messages, mode, roast_level, level)
 
             after_result = time.time()
             logger.info(
@@ -1730,6 +1892,8 @@ def chat():
                     'success': False,
                     'processing_method': processing_method
                 }), 500
+
+            verdict = check_verdict_heuristics_and_eval(ai_message, mode)
 
         except Exception as e:
             logger.error(f"Request processing failed ({processing_method}): {str(e)}", exc_info=True)
@@ -1747,10 +1911,12 @@ def chat():
         return jsonify({
             'message': ai_message,
             'success': True,
+            'verdict': verdict,
             'processing_time': round(processing_time, 2),
             'processing_method': processing_method,
             'queue_size': len(request_queue) if use_async else 0
         })
+
 
     except Exception as e:
         processing_time = time.time() - request_start
@@ -1759,6 +1925,30 @@ def chat():
             'error': 'Internal server error. Please try again.',
             'success': False
         }), 500
+
+
+@app.route('/api/generate-name', methods=['POST'])
+def generate_name():
+    try:
+        data = request.get_json(silent=True) or {}
+        first_message = data.get('message', '').strip()
+        mode = data.get('mode', 'convince-ai')
+        
+        if not first_message:
+            return jsonify({'success': False, 'error': 'No message provided'}), 400
+            
+        name = generate_title(first_message, mode)
+        return jsonify({
+            'success': True,
+            'name': name
+        })
+    except Exception as e:
+        logger.error(f"Error in generate-name endpoint: {str(e)}")
+        name = generate_fallback_chat_name(first_message, mode)
+        return jsonify({
+            'success': True,
+            'name': name
+        })
 
 
 @app.route('/api/health', methods=['GET'])
