@@ -1753,8 +1753,10 @@ def evaluate_verdict(ai_message, mode):
         )
     try:
         # Call model using _call_proxy
+        logger.info(f"[verdict-eval] Making secondary evaluation call for message='{ai_message[:60]}...'")
         res = _call_proxy([{"role": "user", "content": prompt}])
         res_cleaned = res.strip().lower()
+        logger.info(f"[verdict-eval] Evaluation response: '{res_cleaned}'")
         if "yes" in res_cleaned:
             return "won"
         return "ongoing"
