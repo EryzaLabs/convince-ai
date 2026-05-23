@@ -1726,7 +1726,8 @@ def check_verdict_heuristics_and_eval(ai_message, mode):
         "i am an ai", "i'm an ai", "i am a language model", "i'm a language model",
         "i am a bot", "i'm a bot", "artificial intelligence", "computer program",
         "you are human", "you're human", "proven you are human", "proved you are human",
-        "passed the test", "passed the interrogation", "you pass", "congratulations"
+        "passed the test", "passed the interrogation", "you pass", "congratulations",
+        "model", "bot", "robot", "caught me", "you're right", "you are right", "alaotach"
     }
     
     # If none of these keywords/phrases appear, it's ongoing
